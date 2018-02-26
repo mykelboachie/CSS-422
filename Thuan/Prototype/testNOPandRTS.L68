@@ -1,0 +1,31 @@
+00007000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/25/2018 9:38:36 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :
+00000000                             3  * Written by :
+00000000                             4  * Date       :
+00000000                             5  * Description:
+00000000                             6  *-----------------------------------------------------------
+00007000                             7      ORG    $7000
+00007000                             8  START:                  ; first instruction of program
+00007000                             9  
+00007000                            10  * Put program code here
+00007000  4E71                      11      NOP                 * At address 7000, run NOP. Expected to load the data into the other program and print out NOP
+00007002  4E75                      12      RTS
+00007004  0040 0003                 13      ORI #3,D0
+00007008  FFFF FFFF                 14      SIMHALT             ; halt simulator
+0000700C                            15  
+0000700C                            16  * Put variables and constants here
+0000700C                            17  
+0000700C                            18      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+START               7000
