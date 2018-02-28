@@ -1,6 +1,6 @@
 00001000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 2/26/2018 2:41:02 PM
+Created On: 2/26/2018 6:33:48 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      : First simple implementation of printing out NOP
@@ -20,466 +20,502 @@ Created On: 2/26/2018 2:41:02 PM
 00000000  =00000600                 16  SOURCE_MODE        EQU    $600
 00000000  =00000700                 17  SOURCE_VAR         EQU    $700
 00000000                            18  
-00001000                            19      ORG    $1000
-00001000                            20  START:                  ; first instruction of program
-00001000                            21  
-00001000                            22  GET_START_ADDRESS
-00001000  43F9 000012D6             23      LEA INTRO_STARTING,A1  * Welcome the user
-00001006  103C 000D                 24      MOVE.B  #13,D0         * Nice to have carry and line feed
-0000100A  4E4F                      25      TRAP    #15
-0000100C  103C 0002                 26      MOVE.B  #2,D0          * Get a string input that represent the user
-00001010  4E4F                      27      TRAP    #15
-00001012  6000 00CE                 28      BRA     CONVERT_ASCII_TO_HEX
-00001016                            29  
-00001016                            30  GET_END_ADDRESS
-00001016  43F9 00001312             31      LEA INTRO_ENDING,A1         * Now time to get the ending address
-0000101C  103C 000D                 32      MOVE.B  #13,D0
-00001020  4E4F                      33      TRAP    #15
-00001022  103C 0002                 34      MOVE.B  #2,D0
-00001026  4E4F                      35      TRAP    #15
-00001028  6000 00B8                 36      BRA     CONVERT_ASCII_TO_HEX
-0000102C                            37  
-0000102C                            38  PARSING_OP_CODE * Decode the first four byte. Will go throug each 2 bytes at a time
-0000102C  3612                      39      MOVE.W      (A2),D3 * Get the first 4 bytes of op code
-0000102E  31C3 0300                 40      MOVE.W      D3, TEMP_VAR
-00001032  E04B                      41      LSR       #8,D3            * Get the left most byte. 0000XYBC now will get 0000000X
-00001034  E84B                      42      LSR       #4,D3              * Now shift remaing 4 bit. LSR only allow 1-8 bit shift
-00001036  C6FC 0006                 43      MULU      #6,D3
-0000103A  4EB0 3000                 44      JSR        0(A0,D3)
-0000103E                            45  
-0000103E  FFFF FFFF                 46      SIMHALT
-00001042                            47  
-00001042                            48  
-00001042                            49  PREPARE_START_AND_END_ADDRESS * When finish getting the ending adress, will load data into address regist
-00001042  41F9 00001052             50      LEA         FIRST_BYTE_JUMP_TABLE,A0
-00001048  2478 0100                 51      MOVE.L      STARTING_ADDRESS,A2
-0000104C  2678 0200                 52      MOVE.L      ENDING_ADDRESS,A3
-00001050  60DA                      53      BRA         PARSING_OP_CODE * Start parsing the opcode now
-00001052                            54  
-00001052                            55  FIRST_BYTE_JUMP_TABLE
-00001052  4EF9 00001158             56      JMP  FIRST_BYTE_IS_0
-00001058  4EF9 00001164             57      JMP  FIRST_BYTE_IS_1
-0000105E  4EF9 0000116A             58      JMP  FIRST_BYTE_IS_2
-00001064  4EF9 00001170             59      JMP  FIRST_BYTE_IS_3
-0000106A  4EF9 00001176             60      JMP  FIRST_BYTE_IS_4
-00001070  4EF9 0000121A             61      JMP  FIRST_BYTE_IS_5
-00001076  4EF9 00001220             62      JMP  FIRST_BYTE_IS_6
-0000107C  4EF9 00001226             63      JMP  FIRST_BYTE_IS_7
-00001082  4EF9 0000122C             64      JMP  FIRST_BYTE_IS_8
-00001088  4EF9 00001232             65      JMP  FIRST_BYTE_IS_9
-0000108E  4EF9 00001238             66      JMP  FIRST_BYTE_IS_A
-00001094  4EF9 0000123E             67      JMP  FIRST_BYTE_IS_B
-0000109A  4EF9 00001244             68      JMP  FIRST_BYTE_IS_C
-000010A0  4EF9 0000124A             69      JMP  FIRST_BYTE_IS_D
-000010A6  4EF9 00001250             70      JMP  FIRST_BYTE_IS_E
-000010AC  4EF9 00001256             71      JMP  FIRST_BYTE_IS_F
-000010B2                            72  
-000010B2                            73  REGISTER_MODE_JUMP_TABLE
-000010B2  4EF9 000012D6             74      JMP REGISTER_MODE_000             * Data register mode
-000010B8  4EF9 000012D6             75      JMP REGISTER_MODE_001             * ADdress register mode
-000010BE  4EF9 000012D6             76      JMP REGISTER_MODE_010
-000010C4  4EF9 000012D6             77      JMP REGISTER_MODE_011
-000010CA  4EF9 000012D6             78      JMP REGISTER_MODE_100
-000010D0  4EF9 000012D6             79      JMP REGISTER_MODE_101
-000010D6  4EF9 000012D6             80      JMP REGISTER_MODE_110
-000010DC  4EF9 000012D6             81      JMP REGISTER_MODE_111
-000010E2                            82  
-000010E2                            83  
-000010E2                            84  
-000010E2                            85  
-000010E2                            86  
-000010E2                            87  
+00000000  =00000800                 19  SIZE               EQU    $800
+00000000                            20  
+00000000  =00000900                 21  SECOND_TEMP_VAR    EQU    $900
+00000000                            22  
+00000000                            23  
+00000000                            24  
+00001000                            25      ORG    $1000
+00001000                            26  START:                  ; first instruction of program
+00001000                            27  
+00001000                            28  GET_START_ADDRESS
+00001000  43F9 0000130A             29      LEA INTRO_STARTING,A1  * Welcome the user
+00001006  103C 000D                 30      MOVE.B  #13,D0         * Nice to have carry and line feed
+0000100A  4E4F                      31      TRAP    #15
+0000100C  103C 0002                 32      MOVE.B  #2,D0          * Get a string input that represent the user
+00001010  4E4F                      33      TRAP    #15
+00001012  6000 0100                 34      BRA     CONVERT_ASCII_TO_HEX
+00001016                            35  
+00001016                            36  GET_END_ADDRESS
+00001016  43F9 00001346             37      LEA INTRO_ENDING,A1         * Now time to get the ending address
+0000101C  103C 000D                 38      MOVE.B  #13,D0
+00001020  4E4F                      39      TRAP    #15
+00001022  103C 0002                 40      MOVE.B  #2,D0
+00001026  4E4F                      41      TRAP    #15
+00001028  6000 00EA                 42      BRA     CONVERT_ASCII_TO_HEX
+0000102C                            43  
+0000102C                            44  PARSING_OP_CODE * Decode the first four byte. Will go throug each 2 bytes at a time
+0000102C  3612                      45      MOVE.W      (A2),D3 * Get the first 4 bytes of op code
+0000102E  31C3 0300                 46      MOVE.W      D3, TEMP_VAR
+00001032  E04B                      47      LSR       #8,D3            * Get the left most byte. 0000XYBC now will get 0000000X
+00001034  E84B                      48      LSR       #4,D3              * Now shift remaing 4 bit. LSR only allow 1-8 bit shift
+00001036  C6FC 0006                 49      MULU      #6,D3
+0000103A  4EB0 3000                 50      JSR        0(A0,D3)
+0000103E                            51  
+0000103E  FFFF FFFF                 52      SIMHALT
+00001042                            53  
+00001042                            54  
+00001042                            55  PREPARE_START_AND_END_ADDRESS * When finish getting the ending adress, will load data into address regist
+00001042  41F9 00001052             56      LEA         FIRST_BYTE_JUMP_TABLE,A0
+00001048  2478 0100                 57      MOVE.L      STARTING_ADDRESS,A2
+0000104C  2678 0200                 58      MOVE.L      ENDING_ADDRESS,A3
+00001050  60DA                      59      BRA         PARSING_OP_CODE * Start parsing the opcode now
+00001052                            60  
+00001052                            61  FIRST_BYTE_JUMP_TABLE
+00001052  4EF9 0000118A             62      JMP  FIRST_BYTE_IS_0
+00001058  4EF9 00001196             63      JMP  FIRST_BYTE_IS_1
+0000105E  4EF9 0000119C             64      JMP  FIRST_BYTE_IS_2
+00001064  4EF9 000011A2             65      JMP  FIRST_BYTE_IS_3
+0000106A  4EF9 000011A8             66      JMP  FIRST_BYTE_IS_4
+00001070  4EF9 0000124C             67      JMP  FIRST_BYTE_IS_5
+00001076  4EF9 00001252             68      JMP  FIRST_BYTE_IS_6
+0000107C  4EF9 00001258             69      JMP  FIRST_BYTE_IS_7
+00001082  4EF9 0000125E             70      JMP  FIRST_BYTE_IS_8
+00001088  4EF9 00001264             71      JMP  FIRST_BYTE_IS_9
+0000108E  4EF9 0000126A             72      JMP  FIRST_BYTE_IS_A
+00001094  4EF9 00001270             73      JMP  FIRST_BYTE_IS_B
+0000109A  4EF9 00001276             74      JMP  FIRST_BYTE_IS_C
+000010A0  4EF9 0000127C             75      JMP  FIRST_BYTE_IS_D
+000010A6  4EF9 00001282             76      JMP  FIRST_BYTE_IS_E
+000010AC  4EF9 00001288             77      JMP  FIRST_BYTE_IS_F
+000010B2                            78  
+000010B2                            79  REGISTER_MODE_JUMP_TABLE
+000010B2  4EF9 00001308             80      JMP REGISTER_MODE_000             * Data register mode Dn
+000010B8  4EF9 0000130A             81      JMP REGISTER_MODE_001             * ADdress register mode   An
+000010BE  4EF9 0000130A             82      JMP REGISTER_MODE_010             * Indirect address register mode (An)
+000010C4  4EF9 0000130A             83      JMP REGISTER_MODE_011             *  Address register with increment (An)+
+000010CA  4EF9 0000130A             84      JMP REGISTER_MODE_100             * Address register with decrement -(An)
+000010D0  4EF9 0000130A             85      JMP REGISTER_MODE_101             * Not supported
+000010D6  4EF9 0000130A             86      JMP REGISTER_MODE_110             * Not supported
+000010DC  4EF9 0000130A             87      JMP REGISTER_MODE_111             * This could be immediate, absolute short or absolute long
 000010E2                            88  
 000010E2                            89  
 000010E2                            90  
-000010E2                            91  CONVERT_ASCII_TO_HEX            * ascii table http://www.asciitable.com/
-000010E2  1019                      92      MOVE.B (A1)+,D0       * Go through each byte of the address
-000010E4  B03C 0030                 93      CMP.B   #$30,D0       * Valid data are from $30 - $39 ( 0-9) and $41 - $46 (A-F)
-000010E8  6D1A                      94      BLT.B   ERROR_INVALID_INPUT
-000010EA  B03C 0039                 95      CMP.B   #$39,D0          * check if in the range number of hex character
-000010EE  6E24                      96      BGT.B   CONVERT_CHARACTER_ASCII_TO_HEX
-000010F0  0400 0030                 97      SUB.B   #$30,D0     * Get the hex range from '0-9'
-000010F4  D680                      98      ADD.L   D0,D3
-000010F6  5341                      99      SUBI    #1,D1          * Decrement the counter for length of address
-000010F8  B23C 0000                100      CMP.B   #0,D1
-000010FC  6700 0036                101      BEQ     FINISH_CONVERT_STARTING_ADDRESS
-00001100  E98B                     102      LSL.L   #4,D3
-00001102  60DE                     103      BRA     CONVERT_ASCII_TO_HEX
-00001104                           104  
-00001104                           105  ERROR_INVALID_INPUT
-00001104  43F9 00001330            106      LEA INVALID_INPUT,A1   * Print out to the user invalid message and stop the program
-0000110A  103C 000D                107      MOVE.B  #13,D0
-0000110E  4E4F                     108      TRAP    #15
+000010E2                            91  SHORT_OR_LONG_PRINT
+000010E2  4EF9 000010EE             92      JMP ABSOLUTE_SHORT
+000010E8  4EF9 00001106             93      JMP ABSOLUTE_LONG
+000010EE                            94  
+000010EE                            95  
+000010EE                            96  ABSOLUTE_SHORT     *We need to get the next 4 bytes as the address
+000010EE  31DA 0900                 97      MOVE.W (A2)+,SECOND_TEMP_VAR
+000010F2  43F8 0900                 98      LEA    SECOND_TEMP_VAR,A1
+000010F6  103C 000E                 99      MOVE.B #14,D0
+000010FA  4E4F                     100      TRAP   #15
+000010FC  4278 0900                101      CLR.W   SECOND_TEMP_VAR * Reset the variables after displaying
+00001100  4E75                     102      RTS
+00001102  FFFF FFFF                103      SIMHALT
+00001106                           104  
+00001106                           105  ABSOLUTE_LONG       * Print the next 8 bytes as the address
+00001106  4EB8 10EE                106      JSR ABSOLUTE_SHORT        * PRinted 4 bytes
+0000110A  4EB8 10EE                107      JSR ABSOLUTE_SHORT         * Printed 4 more
+0000110E  4E75                     108      RTS
 00001110  FFFF FFFF                109      SIMHALT
 00001114                           110  
-00001114                           111  CONVERT_CHARACTER_ASCII_TO_HEX
-00001114  B03C 0041                112      CMP.B   #$41,D0                        * At this point, the data must be larger than number
-00001118  6DEA                     113      BLT.B   ERROR_INVALID_INPUT            * Only $41 - 46 are valid
-0000111A  B03C 0046                114      CMP.B   #$46,D0
-0000111E  6EE4                     115      BGT.B   ERROR_INVALID_INPUT             * Greater than $46, nope
-00001120  0400 0037                116      SUB.B   #$37,D0                         * Get the A-F value
-00001124  D680                     117      ADD.L   D0,D3                           * Save the value
-00001126  5341                     118      SUBI    #1,D1                           * Decrement the counter
-00001128  B23C 0000                119      CMP.B   #0,D1
-0000112C  6700 0006                120      BEQ     FINISH_CONVERT_STARTING_ADDRESS
-00001130  E98B                     121      LSL.L   #4,D3                           * Shift the value to the left 4 bits to save room for another byte
-00001132  60AE                     122      BRA     CONVERT_ASCII_TO_HEX
-00001134                           123  
-00001134                           124  FINISH_CONVERT_STARTING_ADDRESS
-00001134  B47C 0001                125      CMP     #1,D2                      * Check if we are doing starting or ending address
-00001138  6700 000E                126      BEQ     FINISH_CONVERT_ENDING_ADDRESS
-0000113C  5242                     127      ADDI    #1,D2 * Counter to make sure that we are doing the ending address
-0000113E  21C3 0100                128      MOVE.L  D3,STARTING_ADDRESS
-00001142  4283                     129      CLR.L   D3
-00001144  6000 FED0                130      BRA     GET_END_ADDRESS
-00001148                           131  
-00001148                           132  FINISH_CONVERT_ENDING_ADDRESS
-00001148  4242                     133      CLR.W   D2       * Clear the second data register for future use
-0000114A  21C3 0200                134      MOVE.L  D3,ENDING_ADDRESS
-0000114E  4243                     135      CLR.W   D3
-00001150  6000 FEF0                136      BRA     PREPARE_START_AND_END_ADDRESS
-00001154  FFFF FFFF                137      SIMHALT
-00001158                           138  
-00001158                           139  FIRST_BYTE_IS_0
-00001158  1638 0300                140      MOVE.B  TEMP_VAR,D3
-0000115C  B63C 0000                141      CMP.B   #$00,D3
-00001160  6700 0112                142      BEQ     SECOND_BYTE_IS_0
-00001164                           143  
-00001164                           144  
-00001164                           145  
-00001164                           146  
-00001164                           147  FIRST_BYTE_IS_1
-00001164  4E75                     148      RTS
-00001166  FFFF FFFF                149      SIMHALT
-0000116A                           150  FIRST_BYTE_IS_2
-0000116A  4E75                     151      RTS
-0000116C  FFFF FFFF                152      SIMHALT
-00001170                           153  FIRST_BYTE_IS_3
-00001170  4E75                     154      RTS
-00001172  FFFF FFFF                155      SIMHALT
-00001176                           156  FIRST_BYTE_IS_4                 * Possible for NOP,LEA,RTS,JSR,NEG. Now will check the second byte
-00001176  3638 0300                157      MOVE.W  TEMP_VAR,D3         * Get the original op code back
-0000117A  E94B                     158      LSL     #4,D3               * Go to the left 4 bits, make the second byte the left most byte    0000 1234 => 0000 2340
-0000117C  E04B                     159      LSR     #8,D3               * Go back 2 bytes, now on the third most byte 0000 2340 => 0000 0023
-0000117E  E84B                     160      LSR     #4,D3               * Go back 1 bytes, now on the fourth byte    0000 0023 => 0002
-00001180  B63C 000E                161      CMP.B   #$E,D3
-00001184  6700 00D6                162      BEQ     FIRST_BYTE_4_SECOND_BYTE_E
-00001188  B63C 0008                163      CMP.B   #8,D3              * Could be NEG or LEA
-0000118C  6D00 0002                164      BLT     NEG_OR_LEA
-00001190                           165  
-00001190                           166  INVALID
-00001190                           167  
-00001190                           168  NEG_OR_LEA                     * Check the 8-6 bits of NEG and LEA. For NEG, the 8-6 bits are 0S where S is the size. For LEA, it is 111
-00001190  3638 0300                169      MOVE.W  TEMP_VAR,D3
-00001194  EF4B                     170      LSL     #7,D3              * Get rid of 7 left most bit
-00001196  EE4B                     171      LSR     #7,D3              * Return back to the original position
-00001198  EC4B                     172      LSR     #6,D3              * Push them back all the way to the right
-0000119A  B63C 0007                173      CMP.B   #$07,D3
-0000119E  6700 0046                174      BEQ     PRINT_LEA          * This is LEA
-000011A2                           175  
-000011A2  60EC                     176      BRA     INVALID            * Unrecognized instructions
-000011A4                           177  
-000011A4                           178  
-000011A4                           179  
-000011A4                           180  
-000011A4                           181  
-000011A4                           182  CHECK_TYPE_DATA
-000011A4  3638 0300                183      MOVE.W TEMP_VAR,D3
-000011A8  E94B                     184      LSL     #4,D3      * Get rid of left most byte
-000011AA  E84B                     185      LSR     #4,D3      * Now focus on the following format      destination mode mode source. Start with destination first
-000011AC  E04B                     186      LSR     #8,D3      * Now the D3 has the destination
-000011AE  E24B                     187      LSR     #1,D3
-000011B0  31C3 0400                188      MOVE.W  D3,DESTINATION_VAR
-000011B4  3638 0300                189      MOVE.W  TEMP_VAR,D3 * Now go with the destination mode
-000011B8  EF4B                     190      LSL     #7,D3
-000011BA  EE4B                     191      LSR     #7,D3
-000011BC  EC4B                     192      LSR     #6,D3
-000011BE  31C3 0500                193      MOVE.W  D3,DESTINATION_MODE
-000011C2  3638 0300                194      MOVE.W  TEMP_VAR,D3       * Now extract the source mode
-000011C6  E14B                     195      LSL     #8,D3
-000011C8  E54B                     196      LSL     #2,D3
-000011CA  E04B                     197      LSR     #8,D3
-000011CC  E44B                     198      LSR     #2,D3
-000011CE  E64B                     199      LSR     #3,D3
-000011D0  31C3 0600                200      MOVE.W  D3,SOURCE_MODE      * Now extract the source
-000011D4  3638 0300                201      MOVE.W  TEMP_VAR,D3
-000011D8  E14B                     202      LSL     #8,D3
-000011DA  EB4B                     203      LSL     #5,D3
-000011DC  E04B                     204      LSR     #8,D3
-000011DE  EA4B                     205      LSR     #5,D3
-000011E0  31C3 0700                206      MOVE.W  D3,SOURCE_VAR
-000011E4  4E75                     207      RTS
-000011E6                           208  
-000011E6                           209  
-000011E6                           210  
-000011E6                           211  
-000011E6                           212  
-000011E6                           213  
-000011E6                           214  
-000011E6                           215  
-000011E6                           216  
-000011E6                           217  PRINT_LEA
-000011E6  4EB8 11A4                218      JSR CHECK_TYPE_DATA * Check what type of data we are dealing with and whether we need to out more to fetch data
-000011EA                           219  
-000011EA  0C78 0000 0600           220      CMP #$0,SOURCE_MODE
-000011F0  4EB9 000011FC            221      JSR PRINT_DATA_MODE
-000011F6  4EB9 0000120C            222      JSR PRINT_COMMA
-000011FC                           223  
-000011FC                           224  
-000011FC                           225  
-000011FC                           226  PRINT_DATA_MODE
-000011FC  47F8 10B2                227      LEA     REGISTER_MODE_JUMP_TABLE,A3
-00001200  3638 0600                228      MOVE    SOURCE_MODE,D3
-00001204  C6FC 0006                229      MULU    #6,D3
-00001208  4EB3 3000                230      JSR     0(A3,D3)       * Let's see what mode is this source mode
-0000120C                           231  
-0000120C                           232  
-0000120C                           233  PRINT_COMMA *Print the comma to separate between source and destination
-0000120C  43F9 0000138A            234      LEA     COMMA,A1
-00001212  103C 000E                235      MOVE.B  #14,D0
-00001216  4E4F                     236      TRAP #15
-00001218  4E75                     237      RTS
-0000121A                           238  
-0000121A                           239  
-0000121A                           240  
-0000121A                           241  
-0000121A                           242  
-0000121A                           243  
-0000121A                           244  
-0000121A                           245  
-0000121A                           246  
-0000121A                           247  
-0000121A                           248  
-0000121A                           249  
-0000121A                           250  
-0000121A                           251  
-0000121A                           252  
-0000121A                           253  
-0000121A                           254  
-0000121A                           255  
-0000121A                           256  
-0000121A                           257  
-0000121A                           258  
-0000121A                           259  FIRST_BYTE_IS_5
-0000121A  4E75                     260      RTS
-0000121C  FFFF FFFF                261      SIMHALT
-00001220                           262  FIRST_BYTE_IS_6
-00001220  4E75                     263      RTS
-00001222  FFFF FFFF                264      SIMHALT
-00001226                           265  FIRST_BYTE_IS_7
-00001226  4E75                     266      RTS
-00001228  FFFF FFFF                267      SIMHALT
-0000122C                           268  FIRST_BYTE_IS_8
-0000122C  4E75                     269      RTS
-0000122E  FFFF FFFF                270      SIMHALT
-00001232                           271  FIRST_BYTE_IS_9
-00001232  4E75                     272      RTS
-00001234  FFFF FFFF                273      SIMHALT
-00001238                           274  FIRST_BYTE_IS_A
-00001238  4E75                     275      RTS
-0000123A  FFFF FFFF                276      SIMHALT
-0000123E                           277  FIRST_BYTE_IS_B
-0000123E  4E75                     278      RTS
-00001240  FFFF FFFF                279      SIMHALT
-00001244                           280  FIRST_BYTE_IS_C
-00001244  4E75                     281      RTS
-00001246  FFFF FFFF                282      SIMHALT
-0000124A                           283  FIRST_BYTE_IS_D
-0000124A  4E75                     284      RTS
-0000124C  FFFF FFFF                285      SIMHALT
-00001250                           286  FIRST_BYTE_IS_E
-00001250  4E75                     287      RTS
-00001252  FFFF FFFF                288      SIMHALT
-00001256                           289  FIRST_BYTE_IS_F
-00001256  4E75                     290      RTS
-00001258  FFFF FFFF                291      SIMHALT
-0000125C                           292  
-0000125C                           293  
-0000125C                           294  FIRST_BYTE_4_SECOND_BYTE_E        * Possible answer are NOP,JSR and RTS
-0000125C  3638 0300                295      MOVE.W  TEMP_VAR,D3       * Get the op code
-00001260  E14B                     296      LSL     #8,D3             * Shift to the left to dissappear 2 left most byte
-00001262  E04B                     297      LSR     #8,D3             * Shift to the right to gain back original position. Only now the 2 left most byte are gone
-00001264  B63C 0071                298      CMP.B   #$71,D3           * NOP is 4E71
-00001268  6700 002C                299      BEQ     PRINT_OUT_NOP
-0000126C  B63C 0075                300      CMP.B   #$75,D3           *RTS is 4E75
-00001270  6700 003A                301      BEQ     PRINT_OUT_RTS
-00001274                           302  
-00001274                           303  
-00001274                           304  
-00001274                           305  
-00001274                           306  
-00001274                           307  
-00001274                           308  SECOND_BYTE_IS_0 * Possible to be ORI. In the case first byte is 0 as well
-00001274  161A                     309      MOVE.B  (A2)+,D3
-00001276  B63C 007C                310      CMP.B   #$7C,D3            * Only ORI to SR have the last 2 bytes in op code as 7C
-0000127A  6000 0046                311      BRA     PRINT_OUT_ORI_TO_SR
-0000127E                           312  
-0000127E                           313  FINISH_ONE_INSTRUCTION
-0000127E  544A                     314      ADD #2,A2 *Move to the next instruction
-00001280  6000 FDAA                315      BRA PARSING_OP_CODE
-00001284                           316  
-00001284                           317  SECOND_BYTE_IS_E  * Possible to be NOP and RTS. In the case the first byte is 4
-00001284  161A                     318      MOVE.B  (A2)+,D3   * Get the remaning 2 bytes
-00001286  B67C 0071                319      CMP     #$71,D3
-0000128A  6700 000A                320      BEQ     PRINT_OUT_NOP
-0000128E  B67C 0075                321      CMP     #$75,D3
-00001292  6700 0018                322      BEQ     PRINT_OUT_RTS
-00001296                           323  
-00001296                           324  PRINT_OUT_NOP
-00001296  43F9 0000136A            325      LEA     NOP_VALUE,A1 * Display the NOP message
-0000129C  103C 000D                326      MOVE.B  #13,D0
-000012A0  4E4F                     327      TRAP    #15
-000012A2  6100 002A                328      BSR     USER_INPUT_ENTER
-000012A6  60D6                     329      BRA     FINISH_ONE_INSTRUCTION
-000012A8  FFFF FFFF                330      SIMHALT             ; halt simulator
-000012AC                           331  
-000012AC                           332  PRINT_OUT_RTS
-000012AC  43F9 00001370            333      LEA     RTS_VALUE,A1
-000012B2  103C 000D                334      MOVE.B  #13,D0
-000012B6  4E4F                     335      TRAP    #15
-000012B8  6100 0014                336      BSR USER_INPUT_ENTER
-000012BC  60C0                     337      BRA FINISH_ONE_INSTRUCTION
-000012BE  FFFF FFFF                338      SIMHALT
-000012C2                           339  
-000012C2                           340  PRINT_OUT_ORI_TO_SR
-000012C2  43F9 00001376            341      LEA     ORI_VALUE,A1
-000012C8  103C 000E                342      MOVE.B  #14,D0
-000012CC  4E4F                     343      TRAP    #15
-000012CE                           344  
-000012CE                           345  
-000012CE                           346  
-000012CE                           347  USER_INPUT_ENTER  * Wait for the user to press enter to continue
-000012CE  103C 0004                348      MOVE.B  #4,D0
-000012D2  4E4F                     349      TRAP #15
-000012D4  4E75                     350      RTS
-000012D6                           351  
-000012D6                           352  
-000012D6                           353  
-000012D6                           354  
-000012D6                           355  
-000012D6                           356  REGISTER_MODE_000
-Line 357 ERROR: Invalid syntax
-000012D6                           357      LEA 
-000012D6                           358  
-000012D6                           359  
-000012D6                           360  
-000012D6                           361  
-000012D6                           362  
-000012D6                           363  REGISTER_MODE_001
-000012D6                           364  REGISTER_MODE_010
-000012D6                           365  REGISTER_MODE_011
-000012D6                           366  REGISTER_MODE_100
-000012D6                           367  REGISTER_MODE_101
-000012D6                           368  REGISTER_MODE_110
-000012D6                           369  REGISTER_MODE_111
-000012D6                           370  
-000012D6                           371  
-000012D6                           372  
-000012D6                           373  
-000012D6                           374  
-000012D6                           375  
-000012D6                           376  
-000012D6                           377  
-000012D6                           378  
-000012D6                           379  
-000012D6                           380  
-000012D6                           381  * Put variables and constants here
-000012D6                           382  
-000012D6= 5765 6C63 6F6D 6...      383  INTRO_STARTING   DC.W   'Welcome to the Disassembler. Please enter starting address',0
-00001312= 506C 6561 7365 2...      384  INTRO_ENDING     DC.W   'Please enter ending address',0
-00001330= 494E 5641 4C49 4...      385  INVALID_INPUT    DC.W   'INVALID ADDRESS ENTERED. PLEASE ONLY ENTER 0 - 9 AND A-F',0
-0000136A= 4E4F 5000 0000           386  NOP_VALUE        DC.W   'NOP',0
-00001370= 5254 5300 0000           387  RTS_VALUE        DC.W   'RTS',0
-00001376= 4F52 4900 0000           388  ORI_VALUE        DC.W   'ORI',0
-0000137C= 5352 0000                389  SR_VALUE         DC.W   'SR',0
-00001380= 4343 5200 0000           390  CCR_VALUE        DC.W   'CCR',0
-00001386= 4400 0000                391  DATA_REGISTER    DC.W   'D',0
-0000138A= 2C00 0000                392  COMMA            DC.W   ',',0
-0000138E  =00004E71                393  NOP             EQU      $4E71
-0000138E                           394  
-0000138E                           395  
-0000138E                           396  
-0000138E                           397  
-0000138E                           398  
-0000138E                           399  
-0000138E                           400  
-0000138E                           401  
-0000138E                           402  
-0000138E                           403  
-0000138E                           404      END    START        ; last line of source
+00001114                           111  
+00001114                           112  
+00001114                           113  
+00001114                           114  
+00001114                           115  
+00001114                           116  
+00001114                           117  
+00001114                           118  
+00001114                           119  
+00001114                           120  
+00001114                           121  
+00001114                           122  
+00001114                           123  CONVERT_ASCII_TO_HEX            * ascii table http://www.asciitable.com/
+00001114  1019                     124      MOVE.B (A1)+,D0       * Go through each byte of the address
+00001116  B03C 0030                125      CMP.B   #$30,D0       * Valid data are from $30 - $39 ( 0-9) and $41 - $46 (A-F)
+0000111A  6D1A                     126      BLT.B   ERROR_INVALID_INPUT
+0000111C  B03C 0039                127      CMP.B   #$39,D0          * check if in the range number of hex character
+00001120  6E24                     128      BGT.B   CONVERT_CHARACTER_ASCII_TO_HEX
+00001122  0400 0030                129      SUB.B   #$30,D0     * Get the hex range from '0-9'
+00001126  D680                     130      ADD.L   D0,D3
+00001128  5341                     131      SUBI    #1,D1          * Decrement the counter for length of address
+0000112A  B23C 0000                132      CMP.B   #0,D1
+0000112E  6700 0036                133      BEQ     FINISH_CONVERT_STARTING_ADDRESS
+00001132  E98B                     134      LSL.L   #4,D3
+00001134  60DE                     135      BRA     CONVERT_ASCII_TO_HEX
+00001136                           136  
+00001136                           137  ERROR_INVALID_INPUT
+00001136  43F9 00001364            138      LEA INVALID_INPUT,A1   * Print out to the user invalid message and stop the program
+0000113C  103C 000D                139      MOVE.B  #13,D0
+00001140  4E4F                     140      TRAP    #15
+00001142  FFFF FFFF                141      SIMHALT
+00001146                           142  
+00001146                           143  CONVERT_CHARACTER_ASCII_TO_HEX
+00001146  B03C 0041                144      CMP.B   #$41,D0                        * At this point, the data must be larger than number
+0000114A  6DEA                     145      BLT.B   ERROR_INVALID_INPUT            * Only $41 - 46 are valid
+0000114C  B03C 0046                146      CMP.B   #$46,D0
+00001150  6EE4                     147      BGT.B   ERROR_INVALID_INPUT             * Greater than $46, nope
+00001152  0400 0037                148      SUB.B   #$37,D0                         * Get the A-F value
+00001156  D680                     149      ADD.L   D0,D3                           * Save the value
+00001158  5341                     150      SUBI    #1,D1                           * Decrement the counter
+0000115A  B23C 0000                151      CMP.B   #0,D1
+0000115E  6700 0006                152      BEQ     FINISH_CONVERT_STARTING_ADDRESS
+00001162  E98B                     153      LSL.L   #4,D3                           * Shift the value to the left 4 bits to save room for another byte
+00001164  60AE                     154      BRA     CONVERT_ASCII_TO_HEX
+00001166                           155  
+00001166                           156  FINISH_CONVERT_STARTING_ADDRESS
+00001166  B47C 0001                157      CMP     #1,D2                      * Check if we are doing starting or ending address
+0000116A  6700 000E                158      BEQ     FINISH_CONVERT_ENDING_ADDRESS
+0000116E  5242                     159      ADDI    #1,D2 * Counter to make sure that we are doing the ending address
+00001170  21C3 0100                160      MOVE.L  D3,STARTING_ADDRESS
+00001174  4283                     161      CLR.L   D3
+00001176  6000 FE9E                162      BRA     GET_END_ADDRESS
+0000117A                           163  
+0000117A                           164  FINISH_CONVERT_ENDING_ADDRESS
+0000117A  4242                     165      CLR.W   D2       * Clear the second data register for future use
+0000117C  21C3 0200                166      MOVE.L  D3,ENDING_ADDRESS
+00001180  4243                     167      CLR.W   D3
+00001182  6000 FEBE                168      BRA     PREPARE_START_AND_END_ADDRESS
+00001186  FFFF FFFF                169      SIMHALT
+0000118A                           170  
+0000118A                           171  FIRST_BYTE_IS_0
+0000118A  1638 0300                172      MOVE.B  TEMP_VAR,D3
+0000118E  B63C 0000                173      CMP.B   #$00,D3
+00001192  6700 0112                174      BEQ     SECOND_BYTE_IS_0
+00001196                           175  
+00001196                           176  
+00001196                           177  
+00001196                           178  
+00001196                           179  FIRST_BYTE_IS_1
+00001196  4E75                     180      RTS
+00001198  FFFF FFFF                181      SIMHALT
+0000119C                           182  FIRST_BYTE_IS_2
+0000119C  4E75                     183      RTS
+0000119E  FFFF FFFF                184      SIMHALT
+000011A2                           185  FIRST_BYTE_IS_3
+000011A2  4E75                     186      RTS
+000011A4  FFFF FFFF                187      SIMHALT
+000011A8                           188  FIRST_BYTE_IS_4                 * Possible for NOP,LEA,RTS,JSR,NEG. Now will check the second byte
+000011A8  3638 0300                189      MOVE.W  TEMP_VAR,D3         * Get the original op code back
+000011AC  E94B                     190      LSL     #4,D3               * Go to the left 4 bits, make the second byte the left most byte    0000 1234 => 0000 2340
+000011AE  E04B                     191      LSR     #8,D3               * Go back 2 bytes, now on the third most byte 0000 2340 => 0000 0023
+000011B0  E84B                     192      LSR     #4,D3               * Go back 1 bytes, now on the fourth byte    0000 0023 => 0002
+000011B2  B63C 000E                193      CMP.B   #$E,D3
+000011B6  6700 00D6                194      BEQ     FIRST_BYTE_4_SECOND_BYTE_E
+000011BA  B63C 0008                195      CMP.B   #8,D3              * Could be NEG or LEA
+000011BE  6D00 0002                196      BLT     NEG_OR_LEA
+000011C2                           197  
+000011C2                           198  INVALID
+000011C2                           199  
+000011C2                           200  NEG_OR_LEA                     * Check the 8-6 bits of NEG and LEA. For NEG, the 8-6 bits are 0S where S is the size. For LEA, it is 111
+000011C2  3638 0300                201      MOVE.W  TEMP_VAR,D3
+000011C6  EF4B                     202      LSL     #7,D3              * Get rid of 7 left most bit
+000011C8  EE4B                     203      LSR     #7,D3              * Return back to the original position
+000011CA  EC4B                     204      LSR     #6,D3              * Push them back all the way to the right
+000011CC  B63C 0007                205      CMP.B   #$07,D3             * INCORRECT IMPLEMENTATION.NEED TO FIX NOW
+000011D0  6700 0046                206      BEQ     PRINT_LEA          * This is LEA
+000011D4                           207  
+000011D4  60EC                     208      BRA     INVALID            * Unrecognized instructions
+000011D6                           209  
+000011D6                           210  
+000011D6                           211  
+000011D6                           212  
+000011D6                           213  
+000011D6                           214  CHECK_TYPE_DATA
+000011D6  3638 0300                215      MOVE.W TEMP_VAR,D3
+000011DA  E94B                     216      LSL     #4,D3      * Get rid of left most byte
+000011DC  E84B                     217      LSR     #4,D3      * Now focus on the following format      destination mode mode source. Start with destination first
+000011DE  E04B                     218      LSR     #8,D3      * Now the D3 has the destination
+000011E0  E24B                     219      LSR     #1,D3
+000011E2  31C3 0400                220      MOVE.W  D3,DESTINATION_VAR
+000011E6  3638 0300                221      MOVE.W  TEMP_VAR,D3 * Now go with the destination mode
+000011EA  EF4B                     222      LSL     #7,D3
+000011EC  EE4B                     223      LSR     #7,D3
+000011EE  EC4B                     224      LSR     #6,D3
+000011F0  31C3 0500                225      MOVE.W  D3,DESTINATION_MODE
+000011F4  3638 0300                226      MOVE.W  TEMP_VAR,D3       * Now extract the source mode
+000011F8  E14B                     227      LSL     #8,D3
+000011FA  E54B                     228      LSL     #2,D3
+000011FC  E04B                     229      LSR     #8,D3
+000011FE  E44B                     230      LSR     #2,D3
+00001200  E64B                     231      LSR     #3,D3
+00001202  31C3 0600                232      MOVE.W  D3,SOURCE_MODE      * Now extract the source
+00001206  3638 0300                233      MOVE.W  TEMP_VAR,D3
+0000120A  E14B                     234      LSL     #8,D3
+0000120C  EB4B                     235      LSL     #5,D3
+0000120E  E04B                     236      LSR     #8,D3
+00001210  EA4B                     237      LSR     #5,D3
+00001212  31C3 0700                238      MOVE.W  D3,SOURCE_VAR
+00001216  4E75                     239      RTS
+00001218                           240  
+00001218                           241  
+00001218                           242  
+00001218                           243  
+00001218                           244  
+00001218                           245  
+00001218                           246  
+00001218                           247  
+00001218                           248  
+00001218                           249  PRINT_LEA
+00001218  4EB8 11D6                250      JSR CHECK_TYPE_DATA * Check what type of data we are dealing with and whether we need to out more to fetch data
+0000121C                           251  
+0000121C  0C78 0000 0600           252      CMP #$0,SOURCE_MODE
+00001222  4EB9 0000122E            253      JSR PRINT_DATA_MODE
+00001228  4EB9 0000123E            254      JSR PRINT_COMMA
+0000122E                           255  
+0000122E                           256  
+0000122E                           257  
+0000122E                           258  PRINT_DATA_MODE
+0000122E  47F8 10B2                259      LEA     REGISTER_MODE_JUMP_TABLE,A3
+00001232  3638 0600                260      MOVE    SOURCE_MODE,D3
+00001236  C6FC 0006                261      MULU    #6,D3
+0000123A  4EB3 3000                262      JSR     0(A3,D3)       * Let's see what mode is this source mode
+0000123E                           263  
+0000123E                           264  
+0000123E                           265  PRINT_COMMA *Print the comma to separate between source and destination
+0000123E  43F9 000013BE            266      LEA     COMMA,A1
+00001244  103C 000E                267      MOVE.B  #14,D0
+00001248  4E4F                     268      TRAP #15
+0000124A  4E75                     269      RTS
+0000124C                           270  
+0000124C                           271  
+0000124C                           272  
+0000124C                           273  
+0000124C                           274  
+0000124C                           275  
+0000124C                           276  
+0000124C                           277  
+0000124C                           278  
+0000124C                           279  
+0000124C                           280  
+0000124C                           281  
+0000124C                           282  
+0000124C                           283  
+0000124C                           284  
+0000124C                           285  
+0000124C                           286  
+0000124C                           287  
+0000124C                           288  
+0000124C                           289  
+0000124C                           290  
+0000124C                           291  FIRST_BYTE_IS_5
+0000124C  4E75                     292      RTS
+0000124E  FFFF FFFF                293      SIMHALT
+00001252                           294  FIRST_BYTE_IS_6
+00001252  4E75                     295      RTS
+00001254  FFFF FFFF                296      SIMHALT
+00001258                           297  FIRST_BYTE_IS_7
+00001258  4E75                     298      RTS
+0000125A  FFFF FFFF                299      SIMHALT
+0000125E                           300  FIRST_BYTE_IS_8
+0000125E  4E75                     301      RTS
+00001260  FFFF FFFF                302      SIMHALT
+00001264                           303  FIRST_BYTE_IS_9
+00001264  4E75                     304      RTS
+00001266  FFFF FFFF                305      SIMHALT
+0000126A                           306  FIRST_BYTE_IS_A
+0000126A  4E75                     307      RTS
+0000126C  FFFF FFFF                308      SIMHALT
+00001270                           309  FIRST_BYTE_IS_B
+00001270  4E75                     310      RTS
+00001272  FFFF FFFF                311      SIMHALT
+00001276                           312  FIRST_BYTE_IS_C
+00001276  4E75                     313      RTS
+00001278  FFFF FFFF                314      SIMHALT
+0000127C                           315  FIRST_BYTE_IS_D
+0000127C  4E75                     316      RTS
+0000127E  FFFF FFFF                317      SIMHALT
+00001282                           318  FIRST_BYTE_IS_E
+00001282  4E75                     319      RTS
+00001284  FFFF FFFF                320      SIMHALT
+00001288                           321  FIRST_BYTE_IS_F
+00001288  4E75                     322      RTS
+0000128A  FFFF FFFF                323      SIMHALT
+0000128E                           324  
+0000128E                           325  
+0000128E                           326  FIRST_BYTE_4_SECOND_BYTE_E        * Possible answer are NOP,JSR and RTS
+0000128E  3638 0300                327      MOVE.W  TEMP_VAR,D3       * Get the op code
+00001292  E14B                     328      LSL     #8,D3             * Shift to the left to dissappear 2 left most byte
+00001294  E04B                     329      LSR     #8,D3             * Shift to the right to gain back original position. Only now the 2 left most byte are gone
+00001296  B63C 0071                330      CMP.B   #$71,D3           * NOP is 4E71
+0000129A  6700 002C                331      BEQ     PRINT_OUT_NOP
+0000129E  B63C 0075                332      CMP.B   #$75,D3           *RTS is 4E75
+000012A2  6700 003A                333      BEQ     PRINT_OUT_RTS
+000012A6                           334  
+000012A6                           335  
+000012A6                           336  
+000012A6                           337  
+000012A6                           338  
+000012A6                           339  
+000012A6                           340  SECOND_BYTE_IS_0 * Possible to be ORI. In the case first byte is 0 as well
+000012A6  161A                     341      MOVE.B  (A2)+,D3
+000012A8  B63C 007C                342      CMP.B   #$7C,D3            * Only ORI to SR have the last 2 bytes in op code as 7C
+000012AC  6000 0046                343      BRA     PRINT_OUT_ORI_TO_SR
+000012B0                           344  
+000012B0                           345  FINISH_ONE_INSTRUCTION
+000012B0  544A                     346      ADD #2,A2 *Move to the next instruction
+000012B2  6000 FD78                347      BRA PARSING_OP_CODE
+000012B6                           348  
+000012B6                           349  SECOND_BYTE_IS_E  * Possible to be NOP and RTS. In the case the first byte is 4
+000012B6  161A                     350      MOVE.B  (A2)+,D3   * Get the remaning 2 bytes
+000012B8  B67C 0071                351      CMP     #$71,D3
+000012BC  6700 000A                352      BEQ     PRINT_OUT_NOP
+000012C0  B67C 0075                353      CMP     #$75,D3
+000012C4  6700 0018                354      BEQ     PRINT_OUT_RTS
+000012C8                           355  
+000012C8                           356  PRINT_OUT_NOP
+000012C8  43F9 0000139E            357      LEA     NOP_VALUE,A1 * Display the NOP message
+000012CE  103C 000D                358      MOVE.B  #13,D0
+000012D2  4E4F                     359      TRAP    #15
+000012D4  6100 002A                360      BSR     USER_INPUT_ENTER
+000012D8  60D6                     361      BRA     FINISH_ONE_INSTRUCTION
+000012DA  FFFF FFFF                362      SIMHALT             ; halt simulator
+000012DE                           363  
+000012DE                           364  PRINT_OUT_RTS
+000012DE  43F9 000013A4            365      LEA     RTS_VALUE,A1
+000012E4  103C 000D                366      MOVE.B  #13,D0
+000012E8  4E4F                     367      TRAP    #15
+000012EA  6100 0014                368      BSR USER_INPUT_ENTER
+000012EE  60C0                     369      BRA FINISH_ONE_INSTRUCTION
+000012F0  FFFF FFFF                370      SIMHALT
+000012F4                           371  
+000012F4                           372  PRINT_OUT_ORI_TO_SR
+000012F4  43F9 000013AA            373      LEA     ORI_VALUE,A1
+000012FA  103C 000E                374      MOVE.B  #14,D0
+000012FE  4E4F                     375      TRAP    #15
+00001300                           376  
+00001300                           377  
+00001300                           378  
+00001300                           379  USER_INPUT_ENTER  * Wait for the user to press enter to continue
+00001300  103C 0004                380      MOVE.B  #4,D0
+00001304  4E4F                     381      TRAP #15
+00001306  4E75                     382      RTS
+00001308                           383  
+00001308                           384  
+00001308                           385  
+00001308                           386  
+00001308                           387  
+00001308                           388  REGISTER_MODE_000
+00001308  4E75                     389      RTS
+0000130A                           390  
+0000130A                           391  
+0000130A                           392  
+0000130A                           393  
+0000130A                           394  
+0000130A                           395  REGISTER_MODE_001
+0000130A                           396  REGISTER_MODE_010
+0000130A                           397  REGISTER_MODE_011
+0000130A                           398  REGISTER_MODE_100
+0000130A                           399  REGISTER_MODE_101
+0000130A                           400  REGISTER_MODE_110
+0000130A                           401  REGISTER_MODE_111
+0000130A                           402  
+0000130A                           403  
+0000130A                           404  
+0000130A                           405  
+0000130A                           406  
+0000130A                           407  
+0000130A                           408  
+0000130A                           409  
+0000130A                           410  
+0000130A                           411  
+0000130A                           412  
+0000130A                           413  * Put variables and constants here
+0000130A                           414  
+0000130A= 5765 6C63 6F6D 6...      415  INTRO_STARTING   DC.W   'Welcome to the Disassembler. Please enter starting address',0
+00001346= 506C 6561 7365 2...      416  INTRO_ENDING     DC.W   'Please enter ending address',0
+00001364= 494E 5641 4C49 4...      417  INVALID_INPUT    DC.W   'INVALID ADDRESS ENTERED. PLEASE ONLY ENTER 0 - 9 AND A-F',0
+0000139E= 4E4F 5000 0000           418  NOP_VALUE        DC.W   'NOP',0
+000013A4= 5254 5300 0000           419  RTS_VALUE        DC.W   'RTS',0
+000013AA= 4F52 4900 0000           420  ORI_VALUE        DC.W   'ORI',0
+000013B0= 5352 0000                421  SR_VALUE         DC.W   'SR',0
+000013B4= 4343 5200 0000           422  CCR_VALUE        DC.W   'CCR',0
+000013BA= 4400 0000                423  DATA_REGISTER    DC.W   'D',0
+000013BE= 2C00 0000                424  COMMA            DC.W   ',',0
+000013C2  =00004E71                425  NOP             EQU      $4E71
+000013C2                           426  
+000013C2                           427  
+000013C2                           428  
+000013C2                           429  
+000013C2                           430  
+000013C2                           431  
+000013C2                           432  
+000013C2                           433  
+000013C2                           434  
+000013C2                           435  
+000013C2                           436      END    START        ; last line of source
 
-1 error detected
+No errors detected
 No warnings generated
 
 
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
-CCR_VALUE           1380
-CHECK_TYPE_DATA     11A4
-COMMA               138A
-CONVERT_ASCII_TO_HEX  10E2
-CONVERT_CHARACTER_ASCII_TO_HEX  1114
-DATA_REGISTER       1386
+ABSOLUTE_LONG       1106
+ABSOLUTE_SHORT      10EE
+CCR_VALUE           13B4
+CHECK_TYPE_DATA     11D6
+COMMA               13BE
+CONVERT_ASCII_TO_HEX  1114
+CONVERT_CHARACTER_ASCII_TO_HEX  1146
+DATA_REGISTER       13BA
 DESTINATION_MODE    500
 DESTINATION_VAR     400
 ENDING_ADDRESS      200
-ERROR_INVALID_INPUT  1104
-FINISH_CONVERT_ENDING_ADDRESS  1148
-FINISH_CONVERT_STARTING_ADDRESS  1134
-FINISH_ONE_INSTRUCTION  127E
-FIRST_BYTE_4_SECOND_BYTE_E  125C
-FIRST_BYTE_IS_0     1158
-FIRST_BYTE_IS_1     1164
-FIRST_BYTE_IS_2     116A
-FIRST_BYTE_IS_3     1170
-FIRST_BYTE_IS_4     1176
-FIRST_BYTE_IS_5     121A
-FIRST_BYTE_IS_6     1220
-FIRST_BYTE_IS_7     1226
-FIRST_BYTE_IS_8     122C
-FIRST_BYTE_IS_9     1232
-FIRST_BYTE_IS_A     1238
-FIRST_BYTE_IS_B     123E
-FIRST_BYTE_IS_C     1244
-FIRST_BYTE_IS_D     124A
-FIRST_BYTE_IS_E     1250
-FIRST_BYTE_IS_F     1256
+ERROR_INVALID_INPUT  1136
+FINISH_CONVERT_ENDING_ADDRESS  117A
+FINISH_CONVERT_STARTING_ADDRESS  1166
+FINISH_ONE_INSTRUCTION  12B0
+FIRST_BYTE_4_SECOND_BYTE_E  128E
+FIRST_BYTE_IS_0     118A
+FIRST_BYTE_IS_1     1196
+FIRST_BYTE_IS_2     119C
+FIRST_BYTE_IS_3     11A2
+FIRST_BYTE_IS_4     11A8
+FIRST_BYTE_IS_5     124C
+FIRST_BYTE_IS_6     1252
+FIRST_BYTE_IS_7     1258
+FIRST_BYTE_IS_8     125E
+FIRST_BYTE_IS_9     1264
+FIRST_BYTE_IS_A     126A
+FIRST_BYTE_IS_B     1270
+FIRST_BYTE_IS_C     1276
+FIRST_BYTE_IS_D     127C
+FIRST_BYTE_IS_E     1282
+FIRST_BYTE_IS_F     1288
 FIRST_BYTE_JUMP_TABLE  1052
 GET_END_ADDRESS     1016
 GET_START_ADDRESS   1000
-INTRO_ENDING        1312
-INTRO_STARTING      12D6
-INVALID             1190
-INVALID_INPUT       1330
-NEG_OR_LEA          1190
+INTRO_ENDING        1346
+INTRO_STARTING      130A
+INVALID             11C2
+INVALID_INPUT       1364
+NEG_OR_LEA          11C2
 NOP                 4E71
-NOP_VALUE           136A
-ORI_VALUE           1376
+NOP_VALUE           139E
+ORI_VALUE           13AA
 PARSING_OP_CODE     102C
 PREPARE_START_AND_END_ADDRESS  1042
-PRINT_COMMA         120C
-PRINT_DATA_MODE     11FC
-PRINT_LEA           11E6
-PRINT_OUT_NOP       1296
-PRINT_OUT_ORI_TO_SR  12C2
-PRINT_OUT_RTS       12AC
-REGISTER_MODE_000   12D6
-REGISTER_MODE_001   12D6
-REGISTER_MODE_010   12D6
-REGISTER_MODE_011   12D6
-REGISTER_MODE_100   12D6
-REGISTER_MODE_101   12D6
-REGISTER_MODE_110   12D6
-REGISTER_MODE_111   12D6
+PRINT_COMMA         123E
+PRINT_DATA_MODE     122E
+PRINT_LEA           1218
+PRINT_OUT_NOP       12C8
+PRINT_OUT_ORI_TO_SR  12F4
+PRINT_OUT_RTS       12DE
+REGISTER_MODE_000   1308
+REGISTER_MODE_001   130A
+REGISTER_MODE_010   130A
+REGISTER_MODE_011   130A
+REGISTER_MODE_100   130A
+REGISTER_MODE_101   130A
+REGISTER_MODE_110   130A
+REGISTER_MODE_111   130A
 REGISTER_MODE_JUMP_TABLE  10B2
-RTS_VALUE           1370
-SECOND_BYTE_IS_0    1274
-SECOND_BYTE_IS_E    1284
+RTS_VALUE           13A4
+SECOND_BYTE_IS_0    12A6
+SECOND_BYTE_IS_E    12B6
+SECOND_TEMP_VAR     900
+SHORT_OR_LONG_PRINT  10E2
+SIZE                800
 SOURCE_MODE         600
 SOURCE_VAR          700
-SR_VALUE            137C
+SR_VALUE            13B0
 START               1000
 STARTING_ADDRESS    100
 TEMP_VAR            300
-USER_INPUT_ENTER    12CE
+USER_INPUT_ENTER    1300
