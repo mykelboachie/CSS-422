@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 2/28/2018 3:45:34 PM
+Created On: 3/3/2018 12:17:47 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -8,16 +8,26 @@ Created On: 2/28/2018 3:45:34 PM
 00000000                             4  * Date       :
 00000000                             5  * Description:
 00000000                             6  *-----------------------------------------------------------
-00007000                             7      ORG    $7000
-00007000                             8  START:                  ; first instruction of program
-00007000                             9  
-00007000                            10  * Put program code here
-00007000  4EB8 4000                 11      JSR                 $00004000
-00007004  FFFF FFFF                 12      SIMHALT             ; halt simulator
-00007008                            13  
-00007008                            14  * Put variables and constants here
-00007008                            15  
-00007008                            16      END    START        ; last line of source
+00000000  =00007324                  7  SAD         EQU          $00007324
+00007000                             8      ORG    $7000
+00007000                             9  START:                  ; first instruction of program
+00007000                            10  
+00007000                            11  * Put program code here
+00007000                            12  
+00007000  9805                      13      SUB.B     D5,D4
+00007002  9845                      14      SUB.W     D5,D4
+00007004  9885                      15     SUB.L     D5,D4
+00007006  93B8 1234                 16      SUB.L     D1,$00001234
+0000700A  92B8 1234                 17      SUB.L     $00001234,D1
+0000700E  93B9 FFFF1234             18      SUB.L     D1, $FFFF1234
+00007014  92B9 FFFF1234             19      SUB.L       $FFFF1234,D1
+0000701A                            20     
+0000701A                            21      
+0000701A  FFFF FFFF                 22      SIMHALT             ; halt simulator
+0000701E                            23  
+0000701E                            24  * Put variables and constants here
+0000701E                            25  
+0000701E                            26      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -26,4 +36,5 @@ No warnings generated
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
+SAD                 7324
 START               7000

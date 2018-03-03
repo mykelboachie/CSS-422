@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 2/28/2018 3:45:15 PM
+Created On: 3/3/2018 12:18:38 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -12,12 +12,33 @@ Created On: 2/28/2018 3:45:15 PM
 00007000                             8  START:                  ; first instruction of program
 00007000                             9  
 00007000                            10  * Put program code here
-00007000  4EB8 4000                 11      JSR                 $00004000
-00007004  FFFF FFFF                 12      SIMHALT             ; halt simulator
-00007008                            13  
-00007008                            14  * Put variables and constants here
-00007008                            15  
-00007008                            16      END    START        ; last line of source
+00007000  4E71                      11      NOP
+00007002  4E75                      12      RTS
+00007004  44B9 00511234             13      NEG.L         $00511234         
+0000700A  4EB9 00123658             14      JSR         $00123658
+00007010  4BF8 1234                 15      LEA         $00001234, A5
+00007014  0C80 00000005             16      CMPI.L    #5, D0
+0000701A  0CB8 0001B6D9 1234        17      CMPI.L        #112345, $00001234
+00007022  0C01 0003                 18      CMPI.B          #3,D1
+00007026  0C79 0005 FFFF1234        19      CMPI.W          #5, $FFFF1234
+0000702E  5343                      20      SUBQ        #1, D3
+00007030  5139 11112345             21      SUBQ.B      #8, $11112345
+00007036  53B8 1234                 22       SUBQ.L      #1, $00001234
+0000703A  81F8 1234                 23      DIVS.W         $00001234,D0
+0000703E  8BF8 1200                 24      DIVS.W          $1200, D5
+00007042  85F9 FFFF3658             25      DIVS.W         $FFFF3658,D2 
+00007048  9805                      26          SUB.B     D5,D4
+0000704A  9845                      27      SUB.W     D5,D4
+0000704C  9885                      28     SUB.L     D5,D4
+0000704E  93B8 1234                 29      SUB.L     D1,$00001234
+00007052  92B8 1234                 30      SUB.L     $00001234,D1
+00007056  93B9 FFFF1234             31      SUB.L     D1, $FFFF1234
+0000705C  92B9 FFFF1234             32      SUB.L       $FFFF1234,D1
+00007062  FFFF FFFF                 33      SIMHALT             ; halt simulator
+00007066                            34  
+00007066                            35  * Put variables and constants here
+00007066                            36  
+00007066                            37      END    START        ; last line of source
 
 No errors detected
 No warnings generated
