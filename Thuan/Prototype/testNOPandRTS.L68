@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/3/2018 12:18:38 PM
+Created On: 3/4/2018 10:25:54 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -34,11 +34,35 @@ Created On: 3/3/2018 12:18:38 PM
 00007052  92B8 1234                 30      SUB.L     $00001234,D1
 00007056  93B9 FFFF1234             31      SUB.L     D1, $FFFF1234
 0000705C  92B9 FFFF1234             32      SUB.L       $FFFF1234,D1
-00007062  FFFF FFFF                 33      SIMHALT             ; halt simulator
-00007066                            34  
-00007066                            35  * Put variables and constants here
-00007066                            36  
-00007066                            37      END    START        ; last line of source
+00007062  B079 FFFF1234             33      CMP    $FFFF1234,D0
+00007068  B240                      34     CMP     D0,D1
+0000706A  B849                      35     CMP     A1,D4
+0000706C  BA39 FFFF1234             36     CMP.B  $FFFF1234,D5
+00007072  BC38 1234                 37     CMP.B   $00001234,D6
+00007076  BE78 1234                 38     CMP.W     $1234,D7
+0000707A  B2B8 1234                 39     CMP.L      $1234,D1
+0000707E  6100 0026                 40      BSR       TEST
+00007082  6000 0028                 41      BRA       NO_TEST
+00007086  C0FC 0003                 42         MULU #3,D0
+0000708A  CAF8 1234                 43     MULU $00001234,D5
+0000708E  CCF9 FFFF1100             44     MULU.W $FFFF1100, D6
+00007094  C3FC 002D                 45      MULS #45,D1
+00007098  CFF8 1234                 46      MULS $00001234,D7
+0000709C  C5F9 FFFF1000             47      MULS $FFFF1000, D2
+000070A2  FFFF FFFF                 48      SIMHALT             ; halt simulator
+000070A6                            49  
+000070A6                            50  * Put variables and constants here
+000070A6                            51  TEST
+000070A6  323C 0000                 52      MOVE.W      #0,D1
+000070AA  4E75                      53      RTS
+000070AC                            54      
+000070AC                            55      
+000070AC                            56      
+000070AC                            57      
+000070AC                            58  NO_TEST
+000070AC  343C 0004                 59      MOVE.W     #4,D2
+000070B0  4E75                      60      RTS
+000070B2                            61      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -47,4 +71,6 @@ No warnings generated
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
+NO_TEST             70AC
 START               7000
+TEST                70A6

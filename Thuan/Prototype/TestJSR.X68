@@ -5,25 +5,41 @@
 * Description:
 *-----------------------------------------------------------
 SAD         EQU          $00007324
+
+
+
+
+
     ORG    $7000
 START:                  ; first instruction of program
 
 * Put program code here
 
-    SUB.B     D5,D4
-    SUB.W     D5,D4
-   SUB.L     D5,D4
-    SUB.L     D1,$00001234
-    SUB.L     $00001234,D1
-    SUB.L     D1, $FFFF1234
-    SUB.L       $FFFF1234,D1
-   
+    MULU #3,D0
+   MULU $00001234,D5
+   MULU.W $FFFF1100, D6
+    MULS #45,D1
+    MULS $00001234,D7
+    MULS $FFFF1000, D2
     
     SIMHALT             ; halt simulator
 
+TEST
+    MOVE.W     #4,D0
 * Put variables and constants here
 
     END    START        ; last line of source
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -145,14 +145,9 @@ USER_INPUT_ENTER  * Wait for the user to press enter to continue
 * Print to console section
 *************************************************
 
-* Immediate data is also like absolute short and long. Will take advantage of that
-IMMEDIATE_DATA
-    JSR     GET_NORMAL_SIZE  * Now the first 2 bit of third nibble is on the right most
-    LSR     #1, D3           * Byte aand word are mapped to absolute short => 00 and 01 after shift will go to 00
-                            * If the size is long, the it will go to absolute long 10 => 01
-    MOVE.W  D3, THIRD_TEMP_VAR
-    CLR.W   D3
-    RTS
+
+
+
 
 
 
@@ -212,6 +207,7 @@ PRINT_OUT_JSR
 PRINT_OUT_CMPI                             * Dtermine the size to print out CMPI
     LEA     CMPI_VALUE,A1                  * Print out the literal value
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR     CHECK_TYPE_DATA
     JSR     PRINT_NORMAL_SUFFIX
     JSR     PRINT_EMPTY_SPACE
     JSR     PRINT_IMMEDIATE_DATA_SYMBOL
@@ -248,6 +244,8 @@ PRINT_REGISTER_NUMBER           * This is used to print the register number Dn o
     MOVE.W  THIRD_TEMP_VAR,D3
     MULU    #6,D3
     JSR     0(A4,D3)
+    CLR.W THIRD_TEMP_VAR
+    CLR.W D3
     RTS
 
 PRINT_OUT_LEA
@@ -295,8 +293,7 @@ SUBQ_HELPER_FUNCTION                         * Single function that exist to hel
 PRINT_OUT_DIVS
     LEA DIVS_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
-    LEA WORD_SUFFIX,A1
-    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_NORMAL_WORD_SUFFIX
     JSR PRINT_EMPTY_SPACE
     JSR PRINT_DATA_MODE_SOURCE
     JSR PRINT_COMMA
@@ -306,6 +303,60 @@ PRINT_OUT_DIVS
     JSR PRINT_REGISTER_NUMBER
     BSR USER_INPUT_ENTER
     BRA PARSING_OP_CODE
+    RTS
+
+PRINT_OUT_MULS                      * MULS also act like sub for <ea>,Dn * FIX
+    LEA   MULS_VALUE,A1
+    JSR   PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR   PRINT_NORMAL_WORD_SUFFIX
+    JSR   PRINT_EMPTY_SPACE
+    JSR     CHECK_TYPE_DATA
+    MOVE.W  #%01, DESTINATION_MODE      * Change the size of the 2 size bit to print out
+    JSR  PRINT_DATA_MODE_SOURCE
+    JSR     PRINT_COMMA
+    JSR     PRINT_EMPTY_SPACE
+
+    JSR     PRINT_DATA_REGISTER
+    MOVE.W DESTINATION_VAR,THIRD_TEMP_VAR
+    JSR     PRINT_REGISTER_NUMBER
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
+    RTS
+
+
+PRINT_OUT_MULU
+    LEA     MULU_VALUE,A1
+    JSR     PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR     PRINT_NORMAL_WORD_SUFFIX
+    JSR     PRINT_EMPTY_SPACE
+    JSR     CHECK_TYPE_DATA
+    MOVE.W  #%01, DESTINATION_MODE
+    JSR     PRINT_DATA_MODE_SOURCE
+    JSR     PRINT_COMMA
+    JSR     PRINT_EMPTY_SPACE
+
+    JSR     PRINT_DATA_REGISTER
+    MOVE.W DESTINATION_VAR,THIRD_TEMP_VAR
+    JSR     PRINT_REGISTER_NUMBER
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
+    RTS
+
+PRINT_OUT_CMP
+    LEA CMP_VALUE,A1                        * FIX
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_NORMAL_SUFFIX
+    JSR PRINT_EMPTY_SPACE
+    JSR CHECK_TYPE_DATA
+    JSR PRINT_DATA_MODE_SOURCE
+    JSR PRINT_COMMA
+    JSR PRINT_EMPTY_SPACE
+    JSR PRINT_DATA_REGISTER
+    MOVE.W DESTINATION_VAR,THIRD_TEMP_VAR
+    JSR PRINT_REGISTER_NUMBER
+    BSR USER_INPUT_ENTER
+    BRA PARSING_OP_CODE
+
     RTS
 
 PRINT_OUT_SUB                      * The SUB function is odd is that the Dn is always in front
@@ -322,7 +373,7 @@ PRINT_OUT_SUB                      * The SUB function is odd is that the Dn is a
     JSR PRINT_COMMA
     JSR PRINT_EMPTY_SPACE
     JSR PRINT_DATA_REGISTER
-    MOVE DESTINATION_VAR, THIRD_TEMP_VAR
+    MOVE.W DESTINATION_VAR, THIRD_TEMP_VAR
     JSR PRINT_REGISTER_NUMBER
     BSR USER_INPUT_ENTER
     BRA PARSING_OP_CODE
@@ -363,8 +414,49 @@ SUB_HELPER_REGISTER_TO_MEM            * Helper function to help with printing fr
     BRA PARSING_OP_CODE
     RTS
 
+PRINT_OUT_BRA                         * Current limitation: Only can print out branch to a word address (4bytes).No support for 8 bytes
+    LEA     BRA_VALUE,A1
+    JSR     PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR     PRINT_EMPTY_SPACE
+    JSR     PRINT_HEX_SYMBOL
+    MOVE.W  A2,D4           * Save the current address we are at
+    JSR     GET_NEXT_FOUR_NIBBLE       * GEt the displacement we are suppose to branch to
+    ADD     D3,D4             * Current address + displacement => address we are suppose to jump to
+    MOVE.W  D4, TEMP_CURRENT_4_NIBBLES     * Prepare the address to print out in hex
+    JSR     CONVERT_HEX_TO_ASCII
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
 
+PRINT_OUT_BSR
+    LEA    BSR_VALUE,A1
+    JSR    PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR    PRINT_EMPTY_SPACE
+    JSR    PRINT_HEX_SYMBOL
+    MOVE.W  A2,D4
+    JSR    GET_NEXT_FOUR_NIBBLE
+    ADD    D3,D4
+    MOVE.W D4,TEMP_CURRENT_4_NIBBLES
+    JSR    CONVERT_HEX_TO_ASCII
+    BSR    USER_INPUT_ENTER
+    BRA    PARSING_OP_CODE
 
+PRINT_OUT_Bcc
+    LEA    B,A1
+    JSR    PRINT_TO_SCREEN_ENTIRE_STRING
+    LEA    CONDITION_JUMP_TABLE,A6            * Load the jump table to know which condition code to print
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR     GET_THE_SECOND_NIBBLE
+    MULU    #6,D3
+    JSR     0(A6,D3)            * Now print out the suffix of B
+    JSR     PRINT_EMPTY_SPACE
+    JSR     PRINT_HEX_SYMBOL
+    MOVE.W  A2,D4
+    JSR     GET_NEXT_FOUR_NIBBLE
+    ADD     D3,D4
+    MOVE.W  D4,TEMP_CURRENT_4_NIBBLES
+    JSR     CONVERT_HEX_TO_ASCII
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
 
 PRINT_TO_SCREEN_ENTIRE_STRING         * Simple utility method that take whatever in A1 and print out
     MOVE.B  #14,D0      * This is used to print out the command as an entire string
@@ -500,9 +592,13 @@ GET_NEXT_TWO_NIBBLE
     RTS
 
 GET_NORMAL_SIZE                   * The normal size is on the first 2 bit of the third nibble of the op code
-    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
-    JSR     GET_THE_THIRD_NIBBLE           * Get the index to know which value to print
-    LSR     #2,D3
+*    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    **JSR     GET_THE_THIRD_NIBBLE           * Get the index to know which value to print
+    MOVE.W  DESTINATION_MODE,D3
+    LSL     #8,D3
+    LSL     #6,D3
+    LSR     #8,D3
+    LSR     #6,D3
     RTS
 **********************************
 * logical reasoning section (determine what kind of opcode to print, what type of data to print)
@@ -639,11 +735,14 @@ FIRST_NIBBLE_IS_4                 * Possible for NOP,LEA,RTS,JSR,NEG. Now will c
 FIRST_NIBBLE_IS_5                     * This is SUBQ
     MOVE.W TEMP_CURRENT_4_NIBBLES,D3
     JSR    GET_THE_SECOND_NIBBLE
-    LSL    #3,D3           * Get rid of the first 3 bit
-    LSR    #3,D3           * Shift back to original position
+    LSL    #8,D3           * Get rid of the first 2 byets
+    LSL    #7,D3           * Shift back to original position
+    LSR    #8,D3
+    LSR    #7,D3
     CMP    #0,D3           * SUBQ have 1 as the last bit in the second nibble
 
     BEQ    INVALID          * Valid size of SUBQ are 01,10 and 00 only
+    JSR    CHECK_TYPE_DATA
     JSR    GET_NORMAL_SIZE
     CMP    #%11,D3
     BEQ    INVALID
@@ -652,6 +751,14 @@ FIRST_NIBBLE_IS_5                     * This is SUBQ
     SIMHALT
 
 FIRST_NIBBLE_IS_6
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR     GET_THE_SECOND_NIBBLE
+    CMP     #%0000,D3      * Only the condition code of BRA is 0000
+    BEQ     PRINT_OUT_BRA
+    CMP     #%0001,D3
+    BEQ     PRINT_OUT_BSR
+    BRA     PRINT_OUT_Bcc
+
     RTS
     SIMHALT
 
@@ -671,11 +778,9 @@ FIRST_NIBBLE_IS_8 * DIVS
 FIRST_NIBBLE_IS_9              * SUB
     MOVE.W TEMP_CURRENT_4_NIBBLES,D3
     JSR CHECK_TYPE_DATA
-    MOVE.W DESTINATION_MODE,D3
-    LSL #2,D3
-    LSR #2,D3
+    JSR GET_NORMAL_SIZE
     CMP #%11,D3
-    BEQ INVALID      * SUBQ Does not accept the size of 11
+    BEQ INVALID      * SUB Does not accept the size of 11
     BRA PRINT_OUT_SUB
     SIMHALT
 
@@ -683,11 +788,37 @@ FIRST_NIBBLE_IS_A
     RTS
     SIMHALT
 
-FIRST_NIBBLE_IS_B
-    RTS
+FIRST_NIBBLE_IS_B        * CMP
+    MOVE.W   TEMP_CURRENT_4_NIBBLES,D3
+    JSR      CHECK_TYPE_DATA
+    JSR     GET_NORMAL_SIZE
+    CMP      #%11, D3
+    BEQ      INVALID * CMP does not accept size 11
+    JSR      GET_THE_SECOND_NIBBLE
+    LSL     #8,D3      * Get the last bit of the second nibble
+    LSL      #7,D3
+    LSR      #7,D3
+    LSR      #8,D3
+    CMP      #0,D3        * CMP only accept 0 as the last bit in the second nibble
+    BNE      INVALID
+    BRA      PRINT_OUT_CMP
     SIMHALT
 
-FIRST_NIBBLE_IS_C
+FIRST_NIBBLE_IS_C          * MULS
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    JSR     CHECK_TYPE_DATA
+    JSR     GET_NORMAL_SIZE
+    CMP     #%11,D3
+    BNE     INVALID        * MULS only accept 11 as the size
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    JSR     GET_THE_SECOND_NIBBLE
+    LSL     #8,D3      * Get the last bit of the second nibble
+    LSL      #7,D3
+    LSR      #7,D3
+    LSR      #8,D3
+    CMP     #1,D3     * If it is 1, then it is MULS. Otherwise MULU
+    BEQ     PRINT_OUT_MULS
+    BRA     PRINT_OUT_MULU
     RTS
     SIMHALT
 
@@ -750,14 +881,19 @@ REGISTER_MODE_110 * Not supported. Will deal later
     RTS
 
 REGISTER_MODE_111  * Immediate data, absolute long or absolute short
+    LEA REGISTER_111_JUMP_TABLE,A4    * Print out the appropriate value
+    MOVE.W  THIRD_TEMP_VAR,D3
+    MULU #6,D3
+    JSR 0(A4,D3)
+
     LEA SHORT_OR_LONG_PRINT,A4 * Prepare the table to print out the data
-    CMP #4, THIRD_TEMP_VAR      * Check if it is immediate data or Not
-    BEQ     IMMEDIATE_DATA        * This is immediate data, need to have specific check
+**    CMP #4, THIRD_TEMP_VAR      * Check if it is immediate data or Not
+*    BEQ     IMMEDIATE_DATA        * This is immediate data, need to have specific check
     MOVE.W  THIRD_TEMP_VAR,D3
     MULU #6,D3        * Use THIRD_TEMP_VAR as a place holder for the data we want to print out for register mode 111.
                           * In the code before this, we need to move the appropriate data into this address. Either the destination or the source
                           *   REMEMBER TO IMPLEMENT This
-    JSR  PRINT_HEX_SYMBOL
+
     JSR  0(A4,D3)     * Print out the appropriate long or short value
     RTS
 
@@ -765,6 +901,11 @@ REGISTER_MODE_111  * Immediate data, absolute long or absolute short
 SHORT_OR_LONG_PRINT                     * Will jump to this when the register mode is 111 and not immediate data
     JMP ABSOLUTE_SHORT                  * Xn index for this is 000
     JMP ABSOLUTE_LONG                   * Xn index for this is 001
+    JMP PLACE_HOLDER_1
+    JMP PLACE_HOLDER_2
+    JMP IMMEDIATE_DATA
+
+
 
 ABSOLUTE_SHORT     *We need to get the next 4 bytes as the address to print out
     JSR     GET_NEXT_FOUR_NIBBLE * Got next 4 nibbles to print out as address
@@ -779,7 +920,49 @@ ABSOLUTE_LONG       * Print the next 8 bytes as the address
     RTS
     SIMHALT
 
+PLACE_HOLDER_1           * Nothing
+    SIMHALT
 
+PLACE_HOLDER_2
+    SIMHALT
+
+    * Immediate data is also like absolute short and long. Will take advantage of that
+IMMEDIATE_DATA
+    JSR     GET_NORMAL_SIZE  * Now the first 2 bit of third nibble is on the right most
+    LSR     #1, D3           * Byte aand word are mapped to absolute short => 00 and 01 after shift will go to 00
+                                * If the size is long, the it will go to absolute long 10 => 01
+    LEA SHORT_OR_LONG_PRINT,A4 * Prepare the table to print out the data
+    MULU #6,D3        * Use THIRD_TEMP_VAR as a place holder for the data we want to print out for register mode 111.
+                              * In the code before this, we need to move the appropriate data into this address. Either the destination or the source
+                              *   REMEMBER TO IMPLEMENT This
+    JSR  0(A4,D3)     * Print out the appropriate long or short value
+    RTS
+
+REGISTER_111_JUMP_TABLE
+    JMP PRINT_SHORT_SYMBOL
+    JMP PRINT_LONG_SYMBOL
+    JMP PLACE_HOLDER_3
+    JMP PLACE_HOLDER_4
+    JMP PRINT_IMMEDIATE_DATA_AND_HEX
+
+PRINT_SHORT_SYMBOL
+    JSR PRINT_HEX_SYMBOL
+    RTS
+
+PRINT_LONG_SYMBOL
+    JSR PRINT_HEX_SYMBOL
+    RTS
+
+PLACE_HOLDER_3
+    SIMHALT
+
+PLACE_HOLDER_4
+    SIMHALT
+
+PRINT_IMMEDIATE_DATA_AND_HEX
+    JSR PRINT_IMMEDIATE_DATA_SYMBOL
+    JSR PRINT_HEX_SYMBOL
+    RTS
 
 HEX_CHARACTER_JUMP_TABLE
     JMP     PRINT_HEX_0
@@ -910,11 +1093,94 @@ UNSUPPORTED_NORMAL_SUFFIX * Could be Move to CCR 11
     RTS
 
 
+*This jump table depends on the condition of Bcc
+CONDITION_JUMP_TABLE
+    JMP    CONDITION_TRUE
+    JMP    CONDITION_FALSE
+    JMP    CONDITION_HIGHER
+    JMP    CONDITION_LOWER_OR_SAME
+    JMP    CONDITION_CARRY_CLEAR
+    JMP    CONDITION_CARRY_SET                * Supported
+    JMP    CONDITION_NOT_EQUAL
+    JMP    CONDITION_EQUAL
+    JMP    CONDITION_OVERFLOW_CLEAR            * Supported
+    JMP    CONDITION_OVERFLOW_SET
+    JMP    CONDITION_PLUS
+    JMP    CONDITION_MINUS
+    JMP    CONDITION_GREATER_OR_EQUAL         * Supported
+    JMP    CONDITION_LESS_THAN                * SUPPORTED
+    JMP    CONDITION_GREATER_THAN
+    JMP    CONDITION_LESS_OR_EQUAL
+
+
+CONDITION_TRUE
+    BRA     INVALID
+CONDITION_FALSE
+    BRA     INVALID
+CONDITION_HIGHER
+    BRA     INVALID
+CONDITION_LOWER_OR_SAME
+    BRA     INVALID
+CONDITION_CARRY_CLEAR
+    BRA     INVALID
+
+
+
+CONDITION_CARRY_SET
+    LEA     CARRY_SET_VALUE,A1
+    JSR    PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR    PRINT_EMPTY_SPACE
+    RTS
 
 
 
 
 
+
+
+CONDITION_NOT_EQUAL
+    BRA     INVALID
+CONDITION_EQUAL
+    BRA     INVALID
+
+CONDITION_OVERFLOW_CLEAR
+    LEA    OVERFLOW_CLEAR_VALUE,A1
+    JSR    PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR    PRINT_EMPTY_SPACE
+    RTS
+
+
+
+CONDITION_OVERFLOW_SET
+    BRA     INVALID
+CONDITION_PLUS
+    BRA     INVALID
+CONDITION_MINUS
+    BRA     INVALID
+
+
+CONDITION_GREATER_OR_EQUAL
+    LEA    GREATER_OR_EQUAL_VALUE,A1
+    JSR    PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR    PRINT_EMPTY_SPACE
+    RTS
+
+
+
+
+CONDITION_LESS_THAN
+    LEA   LESS_THAN_VALUE,A1
+    JSR   PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR   PRINT_EMPTY_SPACE
+    RTS
+
+
+
+
+CONDITION_GREATER_THAN
+    BRA     INVALID
+CONDITION_LESS_OR_EQUAL
+    BRA     INVALID
 
 
 
@@ -931,9 +1197,18 @@ JSR_VALUE        DC.W   'JSR',0
 LEA_VALUE        DC.W    'LEA',0
 NEG_VALUE        DC.W    'NEG',0
 CMPI_VALUE      DC.W     'CMPI',0
+CMP_VALUE        DC.W     'CMP',0
 SUB_VALUE        DC.W     'SUB',0
 SUBQ_VALUE       DC.W    'SUBQ',0
 DIVS_VALUE       DC.W     'DIVS',0
+BRA_VALUE        DC.W      'BRA',0
+BSR_VALUE        DC.W     'BSR',0
+MULS_VALUE       DC.W       'MULS',0
+MULU_VALUE       DC.W       'MULU',0
+OVERFLOW_CLEAR_VALUE     DC.W    'VC',0
+GREATER_OR_EQUAL_VALUE   DC.W    'GE',0
+LESS_THAN_VALUE          DC.W     'LT',0
+CARRY_SET_VALUE          DC.W     'CS',0
 SR_VALUE         DC.W   'SR',0
 CCR_VALUE        DC.W   'CCR',0
 OPENING_BRACKET  DC.W   '(',0
@@ -982,6 +1257,7 @@ F            DC.W       'F',0
 
 
     END    START        ; last line of source
+
 
 
 

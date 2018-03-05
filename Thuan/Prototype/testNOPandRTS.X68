@@ -30,11 +30,39 @@ START:                  ; first instruction of program
     SUB.L     $00001234,D1
     SUB.L     D1, $FFFF1234
     SUB.L       $FFFF1234,D1
+    CMP    $FFFF1234,D0
+   CMP     D0,D1
+   CMP     A1,D4
+   CMP.B  $FFFF1234,D5
+   CMP.B   $00001234,D6
+   CMP.W     $1234,D7
+   CMP.L      $1234,D1
+    BSR       TEST
+    BRA       NO_TEST
+       MULU #3,D0
+   MULU $00001234,D5
+   MULU.W $FFFF1100, D6
+    MULS #45,D1
+    MULS $00001234,D7
+    MULS $FFFF1000, D2
     SIMHALT             ; halt simulator
 
 * Put variables and constants here
-
+TEST
+    MOVE.W      #0,D1
+    RTS
+    
+    
+    
+    
+NO_TEST
+    MOVE.W     #4,D2
+    RTS
     END    START        ; last line of source
+
+
+
+
 
 
 

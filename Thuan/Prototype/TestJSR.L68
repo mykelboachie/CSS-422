@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/3/2018 12:17:47 PM
+Created On: 3/4/2018 10:18:39 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -9,25 +9,30 @@ Created On: 3/3/2018 12:17:47 PM
 00000000                             5  * Description:
 00000000                             6  *-----------------------------------------------------------
 00000000  =00007324                  7  SAD         EQU          $00007324
-00007000                             8      ORG    $7000
-00007000                             9  START:                  ; first instruction of program
-00007000                            10  
-00007000                            11  * Put program code here
-00007000                            12  
-00007000  9805                      13      SUB.B     D5,D4
-00007002  9845                      14      SUB.W     D5,D4
-00007004  9885                      15     SUB.L     D5,D4
-00007006  93B8 1234                 16      SUB.L     D1,$00001234
-0000700A  92B8 1234                 17      SUB.L     $00001234,D1
-0000700E  93B9 FFFF1234             18      SUB.L     D1, $FFFF1234
-00007014  92B9 FFFF1234             19      SUB.L       $FFFF1234,D1
-0000701A                            20     
-0000701A                            21      
-0000701A  FFFF FFFF                 22      SIMHALT             ; halt simulator
-0000701E                            23  
-0000701E                            24  * Put variables and constants here
-0000701E                            25  
-0000701E                            26      END    START        ; last line of source
+00000000                             8  
+00000000                             9  
+00000000                            10  
+00000000                            11  
+00000000                            12  
+00007000                            13      ORG    $7000
+00007000                            14  START:                  ; first instruction of program
+00007000                            15  
+00007000                            16  * Put program code here
+00007000                            17  
+00007000  C0FC 0003                 18      MULU #3,D0
+00007004  CAF8 1234                 19     MULU $00001234,D5
+00007008  CCF9 FFFF1100             20     MULU.W $FFFF1100, D6
+0000700E  C3FC 002D                 21      MULS #45,D1
+00007012  CFF8 1234                 22      MULS $00001234,D7
+00007016  C5F9 FFFF1000             23      MULS $FFFF1000, D2
+0000701C                            24      
+0000701C  FFFF FFFF                 25      SIMHALT             ; halt simulator
+00007020                            26  
+00007020                            27  TEST
+00007020  303C 0004                 28      MOVE.W     #4,D0
+00007024                            29  * Put variables and constants here
+00007024                            30  
+00007024                            31      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -38,3 +43,4 @@ Symbol-name         Value
 -------------------------
 SAD                 7324
 START               7000
+TEST                7020
