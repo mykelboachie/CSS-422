@@ -13,14 +13,15 @@ SAD         EQU          $00007324
     ORG    $7000
 START:                  ; first instruction of program
 
-* Put program code here
-
-    MULU #3,D0
-   MULU $00001234,D5
-   MULU.W $FFFF1100, D6
-    MULS #45,D1
-    MULS $00001234,D7
-    MULS $FFFF1000, D2
+*Put program code here
+    OR     D0,D1
+    OR.B  $FFFF1234,D5
+    OR.B   $00001234,D6
+    OR.W     $1234,D7
+    OR.L      $1234,D1
+    OR.W    (A1),D1
+    OR.L    -(A2),D3
+    OR.B    (A2)+,D5
     
     SIMHALT             ; halt simulator
 
@@ -29,6 +30,19 @@ TEST
 * Put variables and constants here
 
     END    START        ; last line of source
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

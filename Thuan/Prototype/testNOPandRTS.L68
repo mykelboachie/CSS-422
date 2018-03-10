@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/4/2018 10:25:54 PM
+Created On: 3/10/2018 12:17:14 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -41,28 +41,99 @@ Created On: 3/4/2018 10:25:54 PM
 00007072  BC38 1234                 37     CMP.B   $00001234,D6
 00007076  BE78 1234                 38     CMP.W     $1234,D7
 0000707A  B2B8 1234                 39     CMP.L      $1234,D1
-0000707E  6100 0026                 40      BSR       TEST
-00007082  6000 0028                 41      BRA       NO_TEST
+0000707E  6100 0108                 40      BSR       TEST
+00007082  6000 010A                 41      BRA       NO_TEST
 00007086  C0FC 0003                 42         MULU #3,D0
 0000708A  CAF8 1234                 43     MULU $00001234,D5
 0000708E  CCF9 FFFF1100             44     MULU.W $FFFF1100, D6
 00007094  C3FC 002D                 45      MULS #45,D1
 00007098  CFF8 1234                 46      MULS $00001234,D7
 0000709C  C5F9 FFFF1000             47      MULS $FFFF1000, D2
-000070A2  FFFF FFFF                 48      SIMHALT             ; halt simulator
-000070A6                            49  
-000070A6                            50  * Put variables and constants here
-000070A6                            51  TEST
-000070A6  323C 0000                 52      MOVE.W      #0,D1
-000070AA  4E75                      53      RTS
-000070AC                            54      
-000070AC                            55      
-000070AC                            56      
-000070AC                            57      
-000070AC                            58  NO_TEST
-000070AC  343C 0004                 59      MOVE.W     #4,D2
-000070B0  4E75                      60      RTS
-000070B2                            61      END    START        ; last line of source
+000070A2  D200                      48      ADD.B        D0,D1
+000070A4  D041                      49      ADD.W        D1,D0
+000070A6  D2B8 1234                 50      ADD.L        $00001234,D1
+000070AA  D378 1234                 51      ADD        D1,  $00001234
+000070AE  D2B9 FFFF1234             52      ADD.L        $FFFF1234,D1
+000070B4  D539 FFFF1234             53      ADD.B        D2, $FFFF1234
+000070BA                            54     * ADD.B        #1,D5
+000070BA                            55    *  ADD.W        #10,D6
+000070BA  5A49                      56      ADDA         #5,A1
+000070BC  D4F8 1234                 57      ADDA.W         $0001234,A2
+000070C0  D1F9 FFFF1234             58      ADDA.L        $FFFF1234,A0
+000070C6  92FC 000C                 59      SUBA         #12,A1
+000070CA  95F8 1234                 60      SUBA.L          $00001234,A2
+000070CE  98F9 FFF12345             61      SUBA.W           $FFF12345, A4
+000070D4  5941                      62      SUB.W           #4,D1
+000070D6  E7F8 1234                 63      ROL $00001234
+000070DA  E7F9 FFFF1123             64      ROL $FFFF1123
+000070E0  E6F8 1234                 65      ROR $00001234
+000070E4  E6F9 FFFF1123             66      ROR $FFFF1123
+000070EA  E6D9                      67      ROR (A1)+
+000070EC  E6E2                      68      ROR -(A2)    
+000070EE  E33A                      69      ROL.B   D1,D2
+000070F0  E37A                      70      ROL.W   D1,D2
+000070F2  E7BC                      71      ROL.L   D3,D4
+000070F4  E11D                      72      ROL.B   #8,D5
+000070F6  E95E                      73      ROL.W   #4,D6
+000070F8  E399                      74      ROL.L   #1,D1     
+000070FA  E3F8 1234                 75      LSL $00001234
+000070FE  E3F9 FFFF1123             76      LSL $FFFF1123
+00007104  E2F8 1234                 77      LSR $00001234
+00007108  E2F9 FFFF1123             78      LSR $FFFF1123
+0000710E  E2D9                      79      LSR (A1)+
+00007110  E2E2                      80      LSR -(A2)    
+00007112  E32A                      81      LSL.B   D1,D2
+00007114  E36A                      82      LSL.W   D1,D2
+00007116  E7AC                      83      LSL.L   D3,D4
+00007118  E10D                      84      LSL.B   #8,D5
+0000711A  E94E                      85      LSL.W   #4,D6
+0000711C  E389                      86      LSL.L   #1,D1  
+0000711E  E1F8 1234                 87      ASL $00001234
+00007122  E1F9 FFFF1123             88      ASL $FFFF1123
+00007128  E0F8 1234                 89      ASR $00001234
+0000712C  E0F9 FFFF1123             90      ASR $FFFF1123
+00007132  E0D9                      91      ASR (A1)+
+00007134  E0E2                      92      ASR -(A2)    
+00007136  E322                      93      ASL.B   D1,D2
+00007138  E362                      94      ASL.W   D1,D2
+0000713A  E7A4                      95      ASL.L   D3,D4
+0000713C  E105                      96      ASL.B   #8,D5
+0000713E  E946                      97      ASL.W   #4,D6
+00007140  E381                      98      ASL.L   #1,D1
+00007142  31C1 1234                 99      MOVE    D1,$00001234
+00007146  2038 1234                100      MOVE.L $00001234,D0
+0000714A  31C1 1234                101      MOVE.W D1, $00001234
+0000714E  1A39 FFFF1234            102      MOVE.B $FFFF1234,D5
+00007154  13D1 00012134            103      MOVE.B  (A1),$000012134
+0000715A  33E2 FFFF1234            104      MOVE.W  -(A2),$FFFF1234
+00007160  2A19                     105      MOVE.L  (A1)+, D5
+00007162  360A                     106      MOVE.W A2,D3
+00007164  3A3C 007B                107      MOVE.W #123, D5
+00007168  1C3C 000C                108      MOVE.B #12,D6
+0000716C  7A0E                     109      MOVE.L #14,D5
+0000716E  7E14                     110      MOVE.L #20, D7
+00007170  3278 1234                111      MOVEA.W $00001234,A1
+00007174  2479 FFFF1234            112      MOVEA.L $FFFF1234,A2
+0000717A  3252                     113      MOVEA.W (A2),A1
+0000717C  265A                     114      MOVEA.L (A2)+,A3
+0000717E  3663                     115      MOVEA.W -(A3),A3
+00007180  3667                     116      MOVEA.W -(SP),A3
+00007182  3867                     117      MOVEA.W -(A7),A4
+00007184                           118    
+00007184  FFFF FFFF                119      SIMHALT             ; halt simulator
+00007188                           120  
+00007188                           121  * Put variables and constants here
+00007188                           122  TEST
+00007188  323C 0000                123      MOVE.W      #0,D1
+0000718C  4E75                     124      RTS
+0000718E                           125      
+0000718E                           126      
+0000718E                           127      
+0000718E                           128      
+0000718E                           129  NO_TEST
+0000718E  343C 0004                130      MOVE.W     #4,D2
+00007192  4E75                     131      RTS
+00007194                           132      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -71,6 +142,6 @@ No warnings generated
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
-NO_TEST             70AC
+NO_TEST             718E
 START               7000
-TEST                70A6
+TEST                7188

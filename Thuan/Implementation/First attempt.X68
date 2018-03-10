@@ -34,21 +34,38 @@ GET_START_ADDRESS
     LEA INTRO_STARTING,A1  * Welcome the user
     MOVE.B  #13,D0         * Nice to have carry and line feed
     TRAP    #15
+
+    MOVEA.L   #0,A1         * Clear what is in A1
+    LEA FIFTH_TEMP_VAR,A1
+    CLR     D0
+    CLR     D1
     MOVE.B  #2,D0          * Get a string input that represent the user
     TRAP    #15
+
     BRA     CONVERT_ASCII_TO_HEX
+
+CHECK_VALID_ADDRESS
+
+
 
 GET_END_ADDRESS
     LEA INTRO_ENDING,A1         * Now time to get the ending address
     MOVE.B  #13,D0
     TRAP    #15
+
+    LEA     FOURTH_TEMP_VAR,A1
     MOVE.B  #2,D0
     TRAP    #15
 
     BRA     CONVERT_ASCII_TO_HEX
 
-PARSING_OP_CODE * Decode the first four byte. Will go throug each 2 bytes at a time
+
+PROCEED_NEXT_INSTRUCTION
     JSR       PRINT_ADDRESS_LOCATION
+    BRA       PARSING_OP_CODE
+
+
+PARSING_OP_CODE * Decode the first four byte. Will go throug each 2 bytes at a time
     JSR       GET_NEXT_FOUR_NIBBLE
     MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
     JSR       GET_THE_FIRST_NIBBLE
@@ -119,6 +136,8 @@ PREPARE_START_AND_END_ADDRESS * When finish getting the ending adress, will load
     BRA         PARSING_OP_CODE * Start parsing the opcode now
 
 FINISH_CONVERT_STARTING_ADDRESS
+    BTST    #0,D3 * The the last bit of the address to see if it is even or odd
+    BNE     INVALID_STARTING_ADDRESS
     CMP     #1,D2                      * Check if we are doing starting or ending address
     BEQ     FINISH_CONVERT_ENDING_ADDRESS
     ADDI    #1,D2 * Counter to make sure that we are doing the ending address
@@ -126,6 +145,10 @@ FINISH_CONVERT_STARTING_ADDRESS
     BRA     GET_END_ADDRESS
 
 FINISH_CONVERT_ENDING_ADDRESS
+    BTST    #0,D3        * Check for odd address
+    BNE     INVALID_ENDING_ADDRESS
+    CMP     STARTING_ADDRESS, D3       * Check if the ending address is less than or equal starting address
+    BGE     INVALID_ENDING_ADDRESS
     CLR.W   D2       * Clear the second data register for future use
     MOVE.L  D3,ENDING_ADDRESS
     CLR.W   D3
@@ -134,6 +157,20 @@ FINISH_CONVERT_ENDING_ADDRESS
     TRAP    #15
     BRA     PREPARE_START_AND_END_ADDRESS
     SIMHALT
+
+INVALID_STARTING_ADDRESS
+    MOVEA.L   #0,A1
+    LEA INVALID_INPUT,A1
+    MOVE.B #13,D0
+    TRAP #15
+    BRA GET_START_ADDRESS
+
+INVALID_ENDING_ADDRESS
+    MOVEA.L   #0,A1
+    LEA INVALID_INPUT,A1
+    MOVE.B #13,D0
+    TRAP #15
+    BRA GET_END_ADDRESS
 
 USER_INPUT_ENTER  * Wait for the user to press enter to continue
     MOVE.B  #5,D0
@@ -153,15 +190,28 @@ USER_INPUT_ENTER  * Wait for the user to press enter to continue
 
 * Could be used to detect non aligned starting address and ending address
 ERROR_INVALID_INPUT
-    LEA INVALID_INPUT,A1   * Print out to the user invalid message and stop the program
-    MOVE.B  #13,D0         * CAN PRINT THIS EITHER WITH NEW LINE OR NOT> TEMPORARY LEAVE IT THERE
-    TRAP    #15
-    SIMHALT
+    CMP #1,D2
+    BEQ INVALID_ENDING_ADDRESS
+    BRA INVALID_STARTING_ADDRESS
 
 INVALID                         * UNSUPPORTED OR INVALID INSTRUCTION. PRINT OUT LOCATIO AND DATA
-    RTS
+    CMP #1,D7
+    BEQ PARSING_OP_CODE
+    LEA DATA_VALUE,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_EMPTY_SPACE
+    JSR PRINT_HEX_SYMBOL
+    JSR CONVERT_HEX_TO_ASCII * Print out the op code that was not decoded
+    MOVE #1,D7 * 1 signify that we are currently in the process of processing invalid op code.
+    BRA PARSING_OP_CODE
+
+
+
+
+
 
 PRINT_OUT_NEG                     * Check the 8-6 bits of NEG and LEA. For NEG, the 8-6 bits are 0S where S is the size. For LEA, it is 111
+    MOVE     #0,D7
     LEA      NEG_VALUE,A1            * Print NEG to screen
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     PRINT_NORMAL_SUFFIX
@@ -173,6 +223,7 @@ PRINT_OUT_NEG                     * Check the 8-6 bits of NEG and LEA. For NEG, 
     RTS
 
 PRINT_OUT_NOP
+    MOVE     #0,D7
     LEA     NOP_VALUE,A1 * Display the NOP message
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     BSR     USER_INPUT_ENTER
@@ -180,6 +231,7 @@ PRINT_OUT_NOP
     SIMHALT             ; halt simulator
 
 PRINT_OUT_RTS
+    MOVE     #0,D7
     LEA     RTS_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     BSR     USER_INPUT_ENTER
@@ -187,6 +239,7 @@ PRINT_OUT_RTS
     SIMHALT
 
 PRINT_OUT_ORI_TO_SR
+    MOVE     #0,D7
     LEA     ORI_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     BSR     USER_INPUT_ENTER
@@ -194,6 +247,7 @@ PRINT_OUT_ORI_TO_SR
     RTS
 
 PRINT_OUT_JSR
+    MOVE     #0,D7
     LEA      JSR_VALUE,A1
     JSR      PRINT_TO_SCREEN_ENTIRE_STRING * Now query what type of data to print out, source or destination
     JSR      PRINT_EMPTY_SPACE
@@ -204,7 +258,8 @@ PRINT_OUT_JSR
 
 
 
-PRINT_OUT_CMPI                             * Dtermine the size to print out CMPI
+PRINT_OUT_CMPI
+    MOVE     #0,D7                        * Dtermine the size to print out CMPI
     LEA     CMPI_VALUE,A1                  * Print out the literal value
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     CHECK_TYPE_DATA
@@ -226,7 +281,7 @@ PRINT_OUT_CMPI                             * Dtermine the size to print out CMPI
 
 
 PRINT_NORMAL_SUFFIX                       * For normal size, the size is on the first 2 bit of the third nibble
-                                * Get rid of the 2 right most bit of the third nibble
+                              * Get rid of the 2 right most bit of the third nibble
     JSR     GET_NORMAL_SIZE
     LEA     NORMAL_SIZE_PRINT_JUMP_TABLE,A4
     CMP     #%11,D3                      * For normal size, does not take 11
@@ -236,7 +291,7 @@ PRINT_NORMAL_SUFFIX                       * For normal size, the size is on the 
     RTS
 
 
-** STORE DATA INTO D3 FIRST.DEPENDING ON SOURCE OR DESTINATION REGISTER
+** STORE DATA INTO THIRD_TEMP_VAR FIRST.DEPENDING ON SOURCE OR DESTINATION REGISTER
 
 PRINT_REGISTER_NUMBER           * This is used to print the register number Dn or An where it will print n
                                 * Expected to store the data into D3 first
@@ -249,6 +304,7 @@ PRINT_REGISTER_NUMBER           * This is used to print the register number Dn o
     RTS
 
 PRINT_OUT_LEA
+    MOVE     #0,D7
     LEA LEA_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_EMPTY_SPACE
@@ -263,8 +319,17 @@ PRINT_OUT_LEA
     BRA PARSING_OP_CODE
     RTS
 
+PRINT_OUT_ADDQ             * ADDQ is the same as SUBQ
+    MOVE     #0,D7
+    LEA ADDQ_VALUE,A1
+    BRA ADDQ_AND_SUBQ_HELPER
+
 PRINT_OUT_SUBQ                              * SUBQ does not accept 0. working on a way to print out 8
+    MOVE     #0,D7
     LEA SUBQ_VALUE,A1
+    BRA ADDQ_AND_SUBQ_HELPER
+
+ADDQ_AND_SUBQ_HELPER
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_NORMAL_SUFFIX
     JSR PRINT_EMPTY_SPACE
@@ -291,6 +356,7 @@ SUBQ_HELPER_FUNCTION                         * Single function that exist to hel
     BRA PARSING_OP_CODE
 
 PRINT_OUT_DIVS
+    MOVE     #0,D7
     LEA DIVS_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_NORMAL_WORD_SUFFIX
@@ -306,6 +372,7 @@ PRINT_OUT_DIVS
     RTS
 
 PRINT_OUT_MULS                      * MULS also act like sub for <ea>,Dn * FIX
+    MOVE     #0,D7
     LEA   MULS_VALUE,A1
     JSR   PRINT_TO_SCREEN_ENTIRE_STRING
     JSR   PRINT_NORMAL_WORD_SUFFIX
@@ -325,6 +392,7 @@ PRINT_OUT_MULS                      * MULS also act like sub for <ea>,Dn * FIX
 
 
 PRINT_OUT_MULU
+    MOVE     #0,D7
     LEA     MULU_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     PRINT_NORMAL_WORD_SUFFIX
@@ -343,7 +411,8 @@ PRINT_OUT_MULU
     RTS
 
 PRINT_OUT_CMP
-    LEA CMP_VALUE,A1                        * FIX
+    MOVE     #0,D7
+    LEA CMP_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_NORMAL_SUFFIX
     JSR PRINT_EMPTY_SPACE
@@ -359,10 +428,57 @@ PRINT_OUT_CMP
 
     RTS
 
+
+PRINT_OUT_SUBA
+    MOVE     #0,D7
+    LEA     SUBA_VALUE,A1
+    BRA     SUBA_AND_ADDA_HELPER
+
+PRINT_OUT_ADDA
+    MOVE     #0,D7
+    LEA     ADDA_VALUE,A1
+    BRA     SUBA_AND_ADDA_HELPER
+
+SUBA_AND_ADDA_HELPER
+    JSR     PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR     CHECK_TYPE_DATA
+    JSR     GET_THE_SECOND_NIBBLE
+    LSL     #8,D3                      * Get the special one bit size of ADDA
+    LSL     #7,D3
+    LSR     #7,D3
+    LSR     #8,D3
+    ADD     #1,D3                      * 0 is word and 1 is long. Add 1 will be 01 and 10, word and long
+    MOVE.W  D3,DESTINATION_MODE
+    JSR     PRINT_NORMAL_SUFFIX        * Now print .W or .L only
+    JSR     PRINT_DATA_MODE_SOURCE
+    JSR     PRINT_COMMA
+    JSR     PRINT_EMPTY_SPACE
+    JSR     PRINT_ADDRESS_REGISTER
+    MOVE.W  DESTINATION_VAR, THIRD_TEMP_VAR       * Save the variable to print out the number of address register
+    JSR     PRINT_REGISTER_NUMBER
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
+    RTS
+
+PRINT_OUT_OR
+    MOVE     #0,D7
+    LEA     OR_VALUE,A1
+    BRA     ADD_AND_SUB_HELPER           * Take advantage of the similar structure like add and sub
+
+PRINT_OUT_ADD
+    MOVE     #0,D7                    * Function similar like SUB
+    LEA     ADD_VALUE,A1
+    BRA     ADD_AND_SUB_HELPER
+
 PRINT_OUT_SUB                      * The SUB function is odd is that the Dn is always in front
                                    * So to distinguish it, we need to check the source mode and compare with
                                    *000
+    MOVE     #0,D7
     LEA SUB_VALUE,A1                       * Only time where the source and dstiantion are in correct position
+    BRA     ADD_AND_SUB_HELPER
+
+
+ADD_AND_SUB_HELPER
     JSR PRINT_TO_SCREEN_ENTIRE_STRING       * Is when both are data register
     JSR PRINT_NORMAL_SUFFIX
     JSR PRINT_EMPTY_SPACE
@@ -378,7 +494,6 @@ PRINT_OUT_SUB                      * The SUB function is odd is that the Dn is a
     BSR USER_INPUT_ENTER
     BRA PARSING_OP_CODE
     RTS
-
 
 SUB_HELPER_FUNCTION       * For whatever the data register is always the first 3 bit of the second nibble
                                            * Even though it can either be in the source or destination when write it
@@ -415,6 +530,7 @@ SUB_HELPER_REGISTER_TO_MEM            * Helper function to help with printing fr
     RTS
 
 PRINT_OUT_BRA                         * Current limitation: Only can print out branch to a word address (4bytes).No support for 8 bytes
+    MOVE     #0,D7
     LEA     BRA_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     PRINT_EMPTY_SPACE
@@ -428,6 +544,7 @@ PRINT_OUT_BRA                         * Current limitation: Only can print out b
     BRA     PARSING_OP_CODE
 
 PRINT_OUT_BSR
+    MOVE     #0,D7
     LEA    BSR_VALUE,A1
     JSR    PRINT_TO_SCREEN_ENTIRE_STRING
     JSR    PRINT_EMPTY_SPACE
@@ -441,6 +558,7 @@ PRINT_OUT_BSR
     BRA    PARSING_OP_CODE
 
 PRINT_OUT_Bcc
+    MOVE     #0,D7
     LEA    B,A1
     JSR    PRINT_TO_SCREEN_ENTIRE_STRING
     LEA    CONDITION_JUMP_TABLE,A6            * Load the jump table to know which condition code to print
@@ -457,6 +575,153 @@ PRINT_OUT_Bcc
     JSR     CONVERT_HEX_TO_ASCII
     BSR     USER_INPUT_ENTER
     BRA     PARSING_OP_CODE
+
+PRINT_OUT_LOGICAL_SHIFT_MEM           * Lsd with <ea>
+    MOVE     #0,D7
+    LEA    LS_VALUE,A1
+    JSR    ASD_LSD_ROD_SHIFT_HELPER
+    RTS
+
+PRINT_OUT_ARITH_SHIFT_MEM
+    MOVE     #0,D7
+    LEA    AS_VALUE,A1
+    JSR    ASD_LSD_ROD_SHIFT_HELPER
+    RTS
+
+ASD_LSD_ROD_SHIFT_HELPER
+    JSR    PRINT_TO_SCREEN_ENTIRE_STRING
+    LEA     RIGHT_OR_LEFT_JUMP_TABLE,A6     * Print the direction, left or right
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    JSR     CHECK_TYPE_DATA
+    JSR     GET_THE_SECOND_NIBBLE
+    LSL      #8,D3
+    LSL      #7,D3
+    LSR       #7,D3
+    LSR      #8,D3
+    MULU     #6,D3
+    JSR      0(A6,D3)   * Print out left or right
+    JSR     PRINT_NORMAL_WORD_SUFFIX
+    MOVE.W   SOURCE_VAR, THIRD_TEMP_VAR      * Save the register number in case for print OUT
+    JSR      PRINT_DATA_MODE_SOURCE
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
+    RTS
+
+PRINT_OUT_ROTATE_MEM
+    MOVE     #0,D7
+    LEA    RO_VALUE,A1
+    JSR    ASD_LSD_ROD_SHIFT_HELPER
+    RTS
+
+
+
+PRINT_OUT_ASD_OR_LSD                * For other ASd and LSd, the first  bit of the last nibble can differentiate them
+    MOVE     #0,D7
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR    GET_THE_FOURTH_NIBBLE
+    LSR    #3,D3
+    CMP    #0,D3
+    BEQ    PRINT_OUT_ASD * First bit is 0 for ASD
+    BRA    PRINT_OUT_LSD * 1 for LSD
+    RTS
+
+PRINT_OUT_ASD
+    MOVE     #0,D7
+    LEA AS_VALUE,A1
+    JSR ASD_LSD_ROD_HELPER_FUNCTION
+    RTS
+
+PRINT_OUT_LSD
+    MOVE     #0,D7
+    LEA LS_VALUE,A1
+    JSR ASD_LSD_ROD_HELPER_FUNCTION
+    RTS
+
+PRINT_OUT_ROD           * Could be ROd or ROXd. If the latter case, then it is invalid
+
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR     GET_THE_FOURTH_NIBBLE
+    LSR     #3,D3
+    CMP     #1,D3
+    BNE     INVALID         * ROD ibly accept 1 as the first bit in the fourth nibbles
+    LEA     RO_VALUE,A1
+    JSR     ASD_LSD_ROD_HELPER_FUNCTION
+    RTS
+
+
+
+
+ASD_LSD_ROD_HELPER_FUNCTION   * Used for printing out the cases where a source and destionaion are present
+    JSR     PRINT_TO_SCREEN_ENTIRE_STRING
+    LEA     RIGHT_OR_LEFT_JUMP_TABLE,A6     * Print the direction, left or right
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3 * Now print out the Direction left or right
+    JSR     CHECK_TYPE_DATA
+    JSR     GET_THE_SECOND_NIBBLE
+    LSL      #8,D3
+    LSL      #7,D3
+    LSR      #8,D3
+    LSR      #7,D3
+    MULU     #6,D3
+    JSR      0(A6,D3)   * Print out left or right
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    JSR     PRINT_NORMAL_SUFFIX    * Print out .B, .W or .L
+    MOVE.W   TEMP_CURRENT_4_NIBBLES,D3      * Now we need to determine if its is immediate or register rotation
+    JSR      GET_THE_THIRD_NIBBLE
+    LSL      #8,D3
+    LSL      #6,D3
+    LSR      #8,D3
+    LSR      #7,D3 * Now the third bit will be at the last position
+    LEA     IMMEDIATE_OR_REGISTER_JUMP_TABLE,A6
+    MULU     #6,D3
+    JSR     0(A6,D3)
+    JSR     PRINT_DATA_REGISTER
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    JSR     CHECK_TYPE_DATA
+    MOVE.W  SOURCE_VAR,THIRD_TEMP_VAR * Save the register number to print out
+    JSR     PRINT_REGISTER_NUMBER
+    BSR     USER_INPUT_ENTER
+    BRA     PARSING_OP_CODE
+    RTS
+
+
+MOVE_OPCODE_HELPER
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR CHECK_TYPE_DATA
+    CMP #%001, DESTINATION_MODE
+    BEQ PRINT_OUT_MOVEA
+    BRA PRINT_OUT_MOVE
+    RTS
+
+
+PRINT_OUT_MOVEA
+    MOVE     #0,D7
+    LEA MOVEA_VALUE,A1
+    JSR MOVE_SECOND_OPCODE_HELPER
+
+PRINT_OUT_MOVE
+    MOVE     #0,D7
+    LEA MOVE_VALUE,A1
+    JSR MOVE_SECOND_OPCODE_HELPER
+
+
+
+MOVE_SECOND_OPCODE_HELPER
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    LEA MOVE_SIZE_PRINT_JUMP_TABLE,A6
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR GET_THE_FIRST_NIBBLE
+    MULU #6,D3
+    JSR 0(A6,D3)
+    JSR PRINT_DATA_MODE_SOURCE
+    JSR PRINT_COMMA
+    JSR PRINT_EMPTY_SPACE
+    JSR PRINT_DATA_MODE_DESTINATION
+    BSR USER_INPUT_ENTER
+    BRA PARSING_OP_CODE
+    RTS
+
+
+
 
 PRINT_TO_SCREEN_ENTIRE_STRING         * Simple utility method that take whatever in A1 and print out
     MOVE.B  #14,D0      * This is used to print out the command as an entire string
@@ -633,6 +898,7 @@ CHECK_TYPE_DATA
     LSR     #8,D3
     LSR     #5,D3
     MOVE.W  D3,SOURCE_VAR
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
     RTS
 
 
@@ -706,17 +972,18 @@ FIRST_NIBBLE_IS_0             * UNFINISHED IMPLEMENTATION
     RTS
 
 
-FIRST_NIBBLE_IS_1
-    RTS
+FIRST_NIBBLE_IS_1 *MOVE.B, MOVEA.B * Can only be MOVE for these nibble because of the size of MOVE
+    JSR MOVE_OPCODE_HELPER
     SIMHALT
 
-FIRST_NIBBLE_IS_2
-    RTS
+FIRST_NIBBLE_IS_2 *MOVE.L, MOVEA.L
+    JSR MOVE_OPCODE_HELPER
     SIMHALT
 
-FIRST_NIBBLE_IS_3
-    RTS
+FIRST_NIBBLE_IS_3 * MOVE.W, MOVEA.W
+    JSR MOVE_OPCODE_HELPER
     SIMHALT
+
 
 FIRST_NIBBLE_IS_4                 * Possible for NOP,LEA,RTS,JSR,NEG. Now will check the second byte
     MOVE.W  TEMP_CURRENT_4_NIBBLES,D3         * Get the original op code back
@@ -732,7 +999,12 @@ FIRST_NIBBLE_IS_4                 * Possible for NOP,LEA,RTS,JSR,NEG. Now will c
     BRA     INVALID
     RTS
 
-FIRST_NIBBLE_IS_5                     * This is SUBQ
+FIRST_NIBBLE_IS_5                     * This is SUBQ and ADDQ
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR    CHECK_TYPE_DATA
+    JSR    GET_NORMAL_SIZE           * SUBQ and ADDQ only accpet normal size. Meaning no 11
+    CMP    #%11,D3
+    BEQ    INVALID
     MOVE.W TEMP_CURRENT_4_NIBBLES,D3
     JSR    GET_THE_SECOND_NIBBLE
     LSL    #8,D3           * Get rid of the first 2 byets
@@ -740,12 +1012,7 @@ FIRST_NIBBLE_IS_5                     * This is SUBQ
     LSR    #8,D3
     LSR    #7,D3
     CMP    #0,D3           * SUBQ have 1 as the last bit in the second nibble
-
-    BEQ    INVALID          * Valid size of SUBQ are 01,10 and 00 only
-    JSR    CHECK_TYPE_DATA
-    JSR    GET_NORMAL_SIZE
-    CMP    #%11,D3
-    BEQ    INVALID
+    BEQ    PRINT_OUT_ADDQ     * ADDQ has 0 as the last bit in the second nibble
     BRA    PRINT_OUT_SUBQ
     RTS
     SIMHALT
@@ -762,25 +1029,48 @@ FIRST_NIBBLE_IS_6
     RTS
     SIMHALT
 
-FIRST_NIBBLE_IS_7
-    RTS
+FIRST_NIBBLE_IS_7 * This is MOVEQ
+    LEA MOVEQ_VALUE,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_NORMAL_LONG_SUFFIX
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D1 * Save the current opcode
+    JSR PRINT_IMMEDIATE_DATA_SYMBOL
+    JSR PRINT_HEX_SYMBOL
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    LSL #8,D3
+    LSR #8,D3
+    MOVE.W D3, TEMP_CURRENT_4_NIBBLES
+    JSR CONVERT_HEX_TO_ASCII                * Print the 8 bit data field
+    MOVE.W D1, TEMP_CURRENT_4_NIBBLES
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR PRINT_COMMA
+    JSR PRINT_EMPTY_SPACE
+    JSR CHECK_TYPE_DATA
+    JSR PRINT_DATA_REGISTER
+    MOVE.W DESTINATION_VAR, THIRD_TEMP_VAR
+    JSR PRINT_REGISTER_NUMBER
+    BSR USER_INPUT_ENTER
+    BRA PARSING_OP_CODE
+
     SIMHALT
 
 FIRST_NIBBLE_IS_8 * DIVS
     MOVE.W TEMP_CURRENT_4_NIBBLES, D3
     JSR CHECK_TYPE_DATA
     CMP #%111, DESTINATION_MODE
-    BNE  INVALID
-    BRA  PRINT_OUT_DIVS
+    BEQ  PRINT_OUT_DIVS
+    CMP #%011, DESTINATION_MODE
+    BEQ  INVALID * This is DIVU
+    BRA PRINT_OUT_OR
     RTS
     SIMHALT
 
-FIRST_NIBBLE_IS_9              * SUB
+FIRST_NIBBLE_IS_9              * SUB and SUBA           * No way of knowing SUX
     MOVE.W TEMP_CURRENT_4_NIBBLES,D3
     JSR CHECK_TYPE_DATA
     JSR GET_NORMAL_SIZE
     CMP #%11,D3
-    BEQ INVALID      * SUB Does not accept the size of 11
+    BEQ PRINT_OUT_SUBA      * SUB Does not accept the size of 11
     BRA PRINT_OUT_SUB
     SIMHALT
 
@@ -794,6 +1084,7 @@ FIRST_NIBBLE_IS_B        * CMP
     JSR     GET_NORMAL_SIZE
     CMP      #%11, D3
     BEQ      INVALID * CMP does not accept size 11
+    MOVE.W   TEMP_CURRENT_4_NIBBLES,D3
     JSR      GET_THE_SECOND_NIBBLE
     LSL     #8,D3      * Get the last bit of the second nibble
     LSL      #7,D3
@@ -812,7 +1103,7 @@ FIRST_NIBBLE_IS_C          * MULS
     BNE     INVALID        * MULS only accept 11 as the size
     MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
     JSR     GET_THE_SECOND_NIBBLE
-    LSL     #8,D3      * Get the last bit of the second nibble
+    LSL     #8,D3      * Get the last bit of the second
     LSL      #7,D3
     LSR      #7,D3
     LSR      #8,D3
@@ -822,17 +1113,53 @@ FIRST_NIBBLE_IS_C          * MULS
     RTS
     SIMHALT
 
-FIRST_NIBBLE_IS_D
+FIRST_NIBBLE_IS_D *ADD, ADDA                        * Have no way of knowing ADDX
+    MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
+    JSR CHECK_TYPE_DATA
+    JSR GET_NORMAL_SIZE
+    CMP #%11,D3
+    BEQ PRINT_OUT_ADDA
+    BRA PRINT_OUT_ADD
     RTS
     SIMHALT
 
-FIRST_NIBBLE_IS_E
+FIRST_NIBBLE_IS_E              * There are 2 types for every LSL,LSR,ASL,ASR,ROR,ROL. They can be seperated as LSd <ea> and other. They can be differentiate by the size 11
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR CHECK_TYPE_DATA
+    JSR GET_NORMAL_SIZE
+    CMP #%11,D3
+    BEQ SPECIAL_SHIFT_INSTRUCTION * Only the instructions with 11 in the size parts deal with <ea> (shift memory)
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR CHECK_TYPE_DATA
+    JSR GET_THE_THIRD_NIBBLE         * For ASd and LSd, the lat bit is 0 of third nibble is 0
+    LSL     #8,D3      * Get the last bit of the second
+    LSL      #7,D3
+    LSR      #7,D3
+    LSR      #8,D3
+    CMP     #0,D3
+    BEQ    PRINT_OUT_ASD_OR_LSD
+    BRA    PRINT_OUT_ROD           * Could also be ROXD. If it is then invalid
+    RTS
+
+
+FIRST_NIBBLE_IS_F * UNSUPPORTED
     RTS
     SIMHALT
 
-FIRST_NIBBLE_IS_F
+SPECIAL_SHIFT_INSTRUCTION *Asd, LSd,ROd with <ea>. Shift instructions
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR     CHECK_TYPE_DATA
+    JSR     GET_THE_SECOND_NIBBLE
+    LSR     #1, D3
+    CMP     #1,D3
+    BEQ     PRINT_OUT_LOGICAL_SHIFT_MEM * 001
+    CMP     #0,D3
+    BEQ     PRINT_OUT_ARITH_SHIFT_MEM *000
+    CMP     #%11,D3
+    BEQ     PRINT_OUT_ROTATE_MEM * 011
+    BRA     INVALID * Must be ROXd, UNSUPPORTED
     RTS
-    SIMHALT
+
 
 
 
@@ -901,8 +1228,8 @@ REGISTER_MODE_111  * Immediate data, absolute long or absolute short
 SHORT_OR_LONG_PRINT                     * Will jump to this when the register mode is 111 and not immediate data
     JMP ABSOLUTE_SHORT                  * Xn index for this is 000
     JMP ABSOLUTE_LONG                   * Xn index for this is 001
-    JMP PLACE_HOLDER_1
-    JMP PLACE_HOLDER_2
+    JMP COUNTER_DISPLACEMENT
+    JMP COUNTER_INDEX
     JMP IMMEDIATE_DATA
 
 
@@ -920,10 +1247,10 @@ ABSOLUTE_LONG       * Print the next 8 bytes as the address
     RTS
     SIMHALT
 
-PLACE_HOLDER_1           * Nothing
+COUNTER_DISPLACEMENT           * Not SUPPORTED
     SIMHALT
 
-PLACE_HOLDER_2
+COUNTER_INDEX                  * Not SUPPORTED
     SIMHALT
 
     * Immediate data is also like absolute short and long. Will take advantage of that
@@ -1061,7 +1388,33 @@ PRINT_HEX_F
         JSR PRINT_TO_SCREEN_ENTIRE_STRING
         RTS
 
+MOVE_SIZE_PRINT_JUMP_TABLE
+    JMP UNSUPPORTED_MOVE_SIZE
+    JMP MOVE_BYTE_SUFFIX
+    JMP MOVE_LONG_SUFFIX
+    JMP MOVE_WORD_SUFFIX
 
+UNSUPPORTED_MOVE_SIZE
+    BRA INVALID
+    RTS
+
+MOVE_BYTE_SUFFIX
+    LEA BYTE_SUFFIX,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_EMPTY_SPACE
+    RTS
+
+MOVE_LONG_SUFFIX
+    LEA LONG_SUFFIX,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_EMPTY_SPACE
+    RTS
+
+MOVE_WORD_SUFFIX
+    LEA WORD_SUFFIX,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR PRINT_EMPTY_SPACE
+    RTS
 
 
 NORMAL_SIZE_PRINT_JUMP_TABLE
@@ -1182,14 +1535,67 @@ CONDITION_GREATER_THAN
 CONDITION_LESS_OR_EQUAL
     BRA     INVALID
 
+RIGHT_OR_LEFT_JUMP_TABLE
+    JMP   RIGHT_DIRECTION_PRINT
+    JMP   LEFT_DIRECTION_PRINT
+
+
+RIGHT_DIRECTION_PRINT
+    LEA RIGHT_DIRECTION,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    RTS
+
+LEFT_DIRECTION_PRINT
+    LEA LEFT_DIRECTION,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    RTS
+
+
+IMMEDIATE_OR_REGISTER_JUMP_TABLE       * Use for ASd, LSd, ROd operations
+    JMP   IMMEDIATE_ROTATION
+    JMP   REGISTER_ROTATION
+
+IMMEDIATE_ROTATION
+    LEA IMMEDIATE_DATA_SYMBOL,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR  GET_THE_SECOND_NIBBLE
+    LSR #1,D3
+    CMP #0,D3
+    BEQ IMMEDIATE_ROTATION_HELPER  * For cases where the immediate is 0, make it 8
+    MOVE.W D3, THIRD_TEMP_VAR * Save the immediate data 1-8 we want to print
+    JSR PRINT_REGISTER_NUMBER
+    JSR PRINT_COMMA
+    JSR PRINT_EMPTY_SPACE
+    RTS
+
+REGISTER_ROTATION
+    LEA DATA_REGISTER,A1
+    JSR PRINT_TO_SCREEN_ENTIRE_STRING
+    MOVE.W TEMP_CURRENT_4_NIBBLES,D3
+    JSR GET_THE_SECOND_NIBBLE
+    LSR #1,D3
+    MOVE.W D3,THIRD_TEMP_VAR
+    JSR PRINT_REGISTER_NUMBER
+    JSR PRINT_COMMA
+    JSR PRINT_EMPTY_SPACE
+    RTS
+
+IMMEDIATE_ROTATION_HELPER
+    MOVE.W #8,THIRD_TEMP_VAR
+    JSR PRINT_REGISTER_NUMBER
+    JSR PRINT_COMMA
+    JSR PRINT_EMPTY_SPACE
+    RTS
+
 
 
 ******************************************************************
 * Constant String that is used to print out the data is stored here
 ******************************************************************
-INTRO_STARTING   DC.W   'Welcome to the Disassembler. Please enter starting address',0
+INTRO_STARTING   DC.W   'Please enter starting address',0
 INTRO_ENDING     DC.W   'Please enter ending address',0
-INVALID_INPUT    DC.W   'INVALID ADDRESS ENTERED. PLEASE ONLY ENTER 0 - 9 AND A-F',0
+INVALID_INPUT    DC.W   'INVALID ADDRESS ENTERED',0
 NOP_VALUE        DC.W   'NOP',0
 RTS_VALUE        DC.W   'RTS',0
 ORI_VALUE        DC.W   'ORI',0
@@ -1199,12 +1605,26 @@ NEG_VALUE        DC.W    'NEG',0
 CMPI_VALUE      DC.W     'CMPI',0
 CMP_VALUE        DC.W     'CMP',0
 SUB_VALUE        DC.W     'SUB',0
+SUBA_VALUE       DC.W     'SUBA',0
 SUBQ_VALUE       DC.W    'SUBQ',0
 DIVS_VALUE       DC.W     'DIVS',0
 BRA_VALUE        DC.W      'BRA',0
 BSR_VALUE        DC.W     'BSR',0
 MULS_VALUE       DC.W       'MULS',0
 MULU_VALUE       DC.W       'MULU',0
+ADD_VALUE        DC.W     'ADD',0
+ADDA_VALUE        DC.W      'ADDA',0
+ADDQ_VALUE       DC.W     'ADDQ',0
+AS_VALUE         DC.W     'AS',0
+LS_VALUE         DC.W     'LS',0
+RO_VALUE         DC.W     'RO',0
+LEFT_DIRECTION   DC.W     'L',0
+RIGHT_DIRECTION  DC.W     'R',0
+OR_VALUE         DC.W     'OR',0
+MOVEA_VALUE      DC.W    'MOVEA',0
+MOVE_VALUE       DC.W    'MOVE',0
+MOVEQ_VALUE      DC.W    'MOVEQ',0
+DATA_VALUE       DC.W    'DATA',0
 OVERFLOW_CLEAR_VALUE     DC.W    'VC',0
 GREATER_OR_EQUAL_VALUE   DC.W    'GE',0
 LESS_THAN_VALUE          DC.W     'LT',0
