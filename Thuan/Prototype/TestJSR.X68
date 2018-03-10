@@ -17,6 +17,8 @@ START:                  ; first instruction of program
     OR     D0,D1
     OR.B  $FFFF1234,D5
     OR.B   $00001234,D6
+    RESET
+    ADDI   #5,D5
     OR.W     $1234,D7
     OR.L      $1234,D1
     OR.W    (A1),D1
@@ -30,6 +32,7 @@ TEST
 * Put variables and constants here
 
     END    START        ; last line of source
+
 
 
 

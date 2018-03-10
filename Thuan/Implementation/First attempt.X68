@@ -60,12 +60,8 @@ GET_END_ADDRESS
     BRA     CONVERT_ASCII_TO_HEX
 
 
-PROCEED_NEXT_INSTRUCTION
-    JSR       PRINT_ADDRESS_LOCATION
-    BRA       PARSING_OP_CODE
-
-
 PARSING_OP_CODE * Decode the first four byte. Will go throug each 2 bytes at a time
+    JSR       PRINT_ADDRESS_LOCATION
     JSR       GET_NEXT_FOUR_NIBBLE
     MOVE.W  TEMP_CURRENT_4_NIBBLES,D3
     JSR       GET_THE_FIRST_NIBBLE
@@ -196,22 +192,26 @@ ERROR_INVALID_INPUT
 
 INVALID                         * UNSUPPORTED OR INVALID INSTRUCTION. PRINT OUT LOCATIO AND DATA
     CMP #1,D7
-    BEQ PARSING_OP_CODE
+    BEQ PARSING_OP_CODE              * Used this to not print out instructions but to proceed
     LEA DATA_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_EMPTY_SPACE
     JSR PRINT_HEX_SYMBOL
     JSR CONVERT_HEX_TO_ASCII * Print out the op code that was not decoded
+    LEA  SPACE,A1 * Go to new line
+    MOVE.B #13,D0
+    TRAP #15
     MOVE #1,D7 * 1 signify that we are currently in the process of processing invalid op code.
     BRA PARSING_OP_CODE
 
 
 
-
-
+RESET_INVALID_COUNTER
+    MOVE      #0, D7                   * Reset the counter, 0 means now the instruction is valid
+    RTS
 
 PRINT_OUT_NEG                     * Check the 8-6 bits of NEG and LEA. For NEG, the 8-6 bits are 0S where S is the size. For LEA, it is 111
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA      NEG_VALUE,A1            * Print NEG to screen
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     PRINT_NORMAL_SUFFIX
@@ -223,7 +223,7 @@ PRINT_OUT_NEG                     * Check the 8-6 bits of NEG and LEA. For NEG, 
     RTS
 
 PRINT_OUT_NOP
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     NOP_VALUE,A1 * Display the NOP message
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     BSR     USER_INPUT_ENTER
@@ -231,7 +231,7 @@ PRINT_OUT_NOP
     SIMHALT             ; halt simulator
 
 PRINT_OUT_RTS
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     RTS_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     BSR     USER_INPUT_ENTER
@@ -239,7 +239,7 @@ PRINT_OUT_RTS
     SIMHALT
 
 PRINT_OUT_ORI_TO_SR
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     ORI_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     BSR     USER_INPUT_ENTER
@@ -247,7 +247,7 @@ PRINT_OUT_ORI_TO_SR
     RTS
 
 PRINT_OUT_JSR
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA      JSR_VALUE,A1
     JSR      PRINT_TO_SCREEN_ENTIRE_STRING * Now query what type of data to print out, source or destination
     JSR      PRINT_EMPTY_SPACE
@@ -259,7 +259,7 @@ PRINT_OUT_JSR
 
 
 PRINT_OUT_CMPI
-    MOVE     #0,D7                        * Dtermine the size to print out CMPI
+    JSR     RESET_INVALID_COUNTER                       * Dtermine the size to print out CMPI
     LEA     CMPI_VALUE,A1                  * Print out the literal value
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     CHECK_TYPE_DATA
@@ -304,7 +304,7 @@ PRINT_REGISTER_NUMBER           * This is used to print the register number Dn o
     RTS
 
 PRINT_OUT_LEA
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA LEA_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_EMPTY_SPACE
@@ -320,12 +320,12 @@ PRINT_OUT_LEA
     RTS
 
 PRINT_OUT_ADDQ             * ADDQ is the same as SUBQ
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA ADDQ_VALUE,A1
     BRA ADDQ_AND_SUBQ_HELPER
 
 PRINT_OUT_SUBQ                              * SUBQ does not accept 0. working on a way to print out 8
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA SUBQ_VALUE,A1
     BRA ADDQ_AND_SUBQ_HELPER
 
@@ -354,9 +354,8 @@ SUBQ_HELPER_FUNCTION                         * Single function that exist to hel
     JSR PRINT_DATA_MODE_SOURCE
     BSR USER_INPUT_ENTER
     BRA PARSING_OP_CODE
-
 PRINT_OUT_DIVS
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA DIVS_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_NORMAL_WORD_SUFFIX
@@ -372,7 +371,7 @@ PRINT_OUT_DIVS
     RTS
 
 PRINT_OUT_MULS                      * MULS also act like sub for <ea>,Dn * FIX
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA   MULS_VALUE,A1
     JSR   PRINT_TO_SCREEN_ENTIRE_STRING
     JSR   PRINT_NORMAL_WORD_SUFFIX
@@ -392,7 +391,7 @@ PRINT_OUT_MULS                      * MULS also act like sub for <ea>,Dn * FIX
 
 
 PRINT_OUT_MULU
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     MULU_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     PRINT_NORMAL_WORD_SUFFIX
@@ -411,7 +410,7 @@ PRINT_OUT_MULU
     RTS
 
 PRINT_OUT_CMP
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA CMP_VALUE,A1
     JSR PRINT_TO_SCREEN_ENTIRE_STRING
     JSR PRINT_NORMAL_SUFFIX
@@ -430,12 +429,12 @@ PRINT_OUT_CMP
 
 
 PRINT_OUT_SUBA
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     SUBA_VALUE,A1
     BRA     SUBA_AND_ADDA_HELPER
 
 PRINT_OUT_ADDA
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     ADDA_VALUE,A1
     BRA     SUBA_AND_ADDA_HELPER
 
@@ -461,19 +460,19 @@ SUBA_AND_ADDA_HELPER
     RTS
 
 PRINT_OUT_OR
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     OR_VALUE,A1
     BRA     ADD_AND_SUB_HELPER           * Take advantage of the similar structure like add and sub
 
 PRINT_OUT_ADD
-    MOVE     #0,D7                    * Function similar like SUB
+    JSR     RESET_INVALID_COUNTER              * Function similar like SUB
     LEA     ADD_VALUE,A1
     BRA     ADD_AND_SUB_HELPER
 
 PRINT_OUT_SUB                      * The SUB function is odd is that the Dn is always in front
                                    * So to distinguish it, we need to check the source mode and compare with
                                    *000
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA SUB_VALUE,A1                       * Only time where the source and dstiantion are in correct position
     BRA     ADD_AND_SUB_HELPER
 
@@ -530,7 +529,7 @@ SUB_HELPER_REGISTER_TO_MEM            * Helper function to help with printing fr
     RTS
 
 PRINT_OUT_BRA                         * Current limitation: Only can print out branch to a word address (4bytes).No support for 8 bytes
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA     BRA_VALUE,A1
     JSR     PRINT_TO_SCREEN_ENTIRE_STRING
     JSR     PRINT_EMPTY_SPACE
@@ -542,9 +541,8 @@ PRINT_OUT_BRA                         * Current limitation: Only can print out b
     JSR     CONVERT_HEX_TO_ASCII
     BSR     USER_INPUT_ENTER
     BRA     PARSING_OP_CODE
-
 PRINT_OUT_BSR
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA    BSR_VALUE,A1
     JSR    PRINT_TO_SCREEN_ENTIRE_STRING
     JSR    PRINT_EMPTY_SPACE
@@ -555,10 +553,10 @@ PRINT_OUT_BSR
     MOVE.W D4,TEMP_CURRENT_4_NIBBLES
     JSR    CONVERT_HEX_TO_ASCII
     BSR    USER_INPUT_ENTER
-    BRA    PARSING_OP_CODE
+    BRA   PARSING_OP_CODE
 
 PRINT_OUT_Bcc
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA    B,A1
     JSR    PRINT_TO_SCREEN_ENTIRE_STRING
     LEA    CONDITION_JUMP_TABLE,A6            * Load the jump table to know which condition code to print
@@ -577,13 +575,13 @@ PRINT_OUT_Bcc
     BRA     PARSING_OP_CODE
 
 PRINT_OUT_LOGICAL_SHIFT_MEM           * Lsd with <ea>
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA    LS_VALUE,A1
     JSR    ASD_LSD_ROD_SHIFT_HELPER
     RTS
 
 PRINT_OUT_ARITH_SHIFT_MEM
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA    AS_VALUE,A1
     JSR    ASD_LSD_ROD_SHIFT_HELPER
     RTS
@@ -608,7 +606,7 @@ ASD_LSD_ROD_SHIFT_HELPER
     RTS
 
 PRINT_OUT_ROTATE_MEM
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA    RO_VALUE,A1
     JSR    ASD_LSD_ROD_SHIFT_HELPER
     RTS
@@ -616,7 +614,7 @@ PRINT_OUT_ROTATE_MEM
 
 
 PRINT_OUT_ASD_OR_LSD                * For other ASd and LSd, the first  bit of the last nibble can differentiate them
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     MOVE.W TEMP_CURRENT_4_NIBBLES,D3
     JSR    GET_THE_FOURTH_NIBBLE
     LSR    #3,D3
@@ -626,13 +624,13 @@ PRINT_OUT_ASD_OR_LSD                * For other ASd and LSd, the first  bit of t
     RTS
 
 PRINT_OUT_ASD
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA AS_VALUE,A1
     JSR ASD_LSD_ROD_HELPER_FUNCTION
     RTS
 
 PRINT_OUT_LSD
-    MOVE     #0,D7
+    JSR     RESET_INVALID_COUNTER
     LEA LS_VALUE,A1
     JSR ASD_LSD_ROD_HELPER_FUNCTION
     RTS
@@ -644,6 +642,7 @@ PRINT_OUT_ROD           * Could be ROd or ROXd. If the latter case, then it is i
     LSR     #3,D3
     CMP     #1,D3
     BNE     INVALID         * ROD ibly accept 1 as the first bit in the fourth nibbles
+    JSR     RESET_INVALID_COUNTER
     LEA     RO_VALUE,A1
     JSR     ASD_LSD_ROD_HELPER_FUNCTION
     RTS
@@ -694,12 +693,14 @@ MOVE_OPCODE_HELPER
 
 
 PRINT_OUT_MOVEA
+    JSR     RESET_INVALID_COUNTER
     MOVE     #0,D7
     LEA MOVEA_VALUE,A1
     JSR MOVE_SECOND_OPCODE_HELPER
 
 PRINT_OUT_MOVE
-    MOVE     #0,D7
+
+    JSR     RESET_INVALID_COUNTER
     LEA MOVE_VALUE,A1
     JSR MOVE_SECOND_OPCODE_HELPER
 

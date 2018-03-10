@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/10/2018 12:17:41 PM
+Created On: 3/10/2018 2:33:55 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -21,19 +21,21 @@ Created On: 3/10/2018 12:17:41 PM
 00007000  8240                      17      OR     D0,D1
 00007002  8A39 FFFF1234             18      OR.B  $FFFF1234,D5
 00007008  8C38 1234                 19      OR.B   $00001234,D6
-0000700C  8E78 1234                 20      OR.W     $1234,D7
-00007010  82B8 1234                 21      OR.L      $1234,D1
-00007014  8251                      22      OR.W    (A1),D1
-00007016  86A2                      23      OR.L    -(A2),D3
-00007018  8A1A                      24      OR.B    (A2)+,D5
-0000701A                            25      
-0000701A  FFFF FFFF                 26      SIMHALT             ; halt simulator
-0000701E                            27  
-0000701E                            28  TEST
-0000701E  303C 0004                 29      MOVE.W     #4,D0
-00007022                            30  * Put variables and constants here
-00007022                            31  
-00007022                            32      END    START        ; last line of source
+0000700C  4E70                      20      RESET
+0000700E  5A45                      21      ADDI   #5,D5
+00007010  8E78 1234                 22      OR.W     $1234,D7
+00007014  82B8 1234                 23      OR.L      $1234,D1
+00007018  8251                      24      OR.W    (A1),D1
+0000701A  86A2                      25      OR.L    -(A2),D3
+0000701C  8A1A                      26      OR.B    (A2)+,D5
+0000701E                            27      
+0000701E  FFFF FFFF                 28      SIMHALT             ; halt simulator
+00007022                            29  
+00007022                            30  TEST
+00007022  303C 0004                 31      MOVE.W     #4,D0
+00007026                            32  * Put variables and constants here
+00007026                            33  
+00007026                            34      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -44,4 +46,4 @@ Symbol-name         Value
 -------------------------
 SAD                 7324
 START               7000
-TEST                701E
+TEST                7022
