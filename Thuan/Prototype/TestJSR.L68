@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/10/2018 2:33:55 PM
+Created On: 3/11/2018 12:05:22 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -22,20 +22,24 @@ Created On: 3/10/2018 2:33:55 PM
 00007002  8A39 FFFF1234             18      OR.B  $FFFF1234,D5
 00007008  8C38 1234                 19      OR.B   $00001234,D6
 0000700C  4E70                      20      RESET
-0000700E  5A45                      21      ADDI   #5,D5
-00007010  8E78 1234                 22      OR.W     $1234,D7
-00007014  82B8 1234                 23      OR.L      $1234,D1
-00007018  8251                      24      OR.W    (A1),D1
-0000701A  86A2                      25      OR.L    -(A2),D3
-0000701C  8A1A                      26      OR.B    (A2)+,D5
-0000701E                            27      
-0000701E  FFFF FFFF                 28      SIMHALT             ; halt simulator
-00007022                            29  
-00007022                            30  TEST
-00007022  303C 0004                 31      MOVE.W     #4,D0
-00007026                            32  * Put variables and constants here
-00007026                            33  
-00007026                            34      END    START        ; last line of source
+0000700E  4E73                      21      RTE
+00007010                            22      
+00007010  4E76                      23      TRAPV
+00007012  5A45                      24      ADDI   #5,D5
+00007014  8E78 1234                 25      OR.W     $1234,D7
+00007018  4E77                      26      RTR    
+0000701A  82B8 1234                 27      OR.L      $1234,D1
+0000701E  8251                      28      OR.W    (A1),D1
+00007020  86A2                      29      OR.L    -(A2),D3
+00007022  8A1A                      30      OR.B    (A2)+,D5
+00007024                            31      
+00007024  FFFF FFFF                 32      SIMHALT             ; halt simulator
+00007028                            33  
+00007028                            34  TEST
+00007028  303C 0004                 35      MOVE.W     #4,D0
+0000702C                            36  * Put variables and constants here
+0000702C                            37  
+0000702C                            38      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -46,4 +50,4 @@ Symbol-name         Value
 -------------------------
 SAD                 7324
 START               7000
-TEST                7022
+TEST                7028

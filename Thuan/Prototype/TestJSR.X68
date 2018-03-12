@@ -18,8 +18,12 @@ START:                  ; first instruction of program
     OR.B  $FFFF1234,D5
     OR.B   $00001234,D6
     RESET
+    RTE
+    
+    TRAPV
     ADDI   #5,D5
     OR.W     $1234,D7
+    RTR    
     OR.L      $1234,D1
     OR.W    (A1),D1
     OR.L    -(A2),D3
@@ -32,6 +36,7 @@ TEST
 * Put variables and constants here
 
     END    START        ; last line of source
+
 
 
 
