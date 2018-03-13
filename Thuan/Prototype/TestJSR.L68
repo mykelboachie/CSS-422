@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/11/2018 12:05:22 PM
+Created On: 3/12/2018 11:49:13 AM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -18,28 +18,27 @@ Created On: 3/11/2018 12:05:22 PM
 00007000                            14  START:                  ; first instruction of program
 00007000                            15  
 00007000                            16  *Put program code here
-00007000  8240                      17      OR     D0,D1
-00007002  8A39 FFFF1234             18      OR.B  $FFFF1234,D5
-00007008  8C38 1234                 19      OR.B   $00001234,D6
-0000700C  4E70                      20      RESET
-0000700E  4E73                      21      RTE
-00007010                            22      
-00007010  4E76                      23      TRAPV
-00007012  5A45                      24      ADDI   #5,D5
-00007014  8E78 1234                 25      OR.W     $1234,D7
-00007018  4E77                      26      RTR    
-0000701A  82B8 1234                 27      OR.L      $1234,D1
-0000701E  8251                      28      OR.W    (A1),D1
-00007020  86A2                      29      OR.L    -(A2),D3
-00007022  8A1A                      30      OR.B    (A2)+,D5
-00007024                            31      
-00007024  FFFF FFFF                 32      SIMHALT             ; halt simulator
-00007028                            33  
-00007028                            34  TEST
-00007028  303C 0004                 35      MOVE.W     #4,D0
-0000702C                            36  * Put variables and constants here
-0000702C                            37  
-0000702C                            38      END    START        ; last line of source
+00007000                            17     
+00007000  362B 00F3                 18      MOVE    $0F3(A3),D3
+00007004  4E76                      19      TRAPV
+00007006  5A45                      20      ADDI   #5,D5
+00007008  8078 1234                 21      OR.W     $1234,D0
+0000700C  4E77                      22      RTR    
+0000700E  82B8 1234                 23      OR.L      $1234,D1
+00007012  362B 00F3                 24      MOVE    $0F3(A3),D3
+00007016  362B 00F3                 25      MOVE    $0F3(A3),D3
+0000701A  8251                      26      OR.W    (A1),D1
+0000701C  86A2                      27      OR.L    -(A2),D3
+0000701E  3743 00F3                 28      MOVE    D3,$0F3(A3)
+00007022  8A1A                      29      OR.B    (A2)+,D5
+00007024                            30      
+00007024  FFFF FFFF                 31      SIMHALT             ; halt simulator
+00007028                            32  
+00007028                            33  TEST
+00007028  303C 0004                 34      MOVE.W     #4,D0
+0000702C                            35  * Put variables and constants here
+0000702C                            36  
+0000702C                            37      END    START        ; last line of source
 
 No errors detected
 No warnings generated
