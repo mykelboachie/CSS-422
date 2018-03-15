@@ -1,6 +1,6 @@
 00007000 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.15.04
-Created On: 3/10/2018 12:17:14 PM
+Created On: 3/13/2018 12:00:35 PM
 
 00000000                             1  *-----------------------------------------------------------
 00000000                             2  * Title      :
@@ -14,126 +14,164 @@ Created On: 3/10/2018 12:17:14 PM
 00007000                            10  * Put program code here
 00007000  4E71                      11      NOP
 00007002  4E75                      12      RTS
-00007004  44B9 00511234             13      NEG.L         $00511234         
-0000700A  4EB9 00123658             14      JSR         $00123658
-00007010  4BF8 1234                 15      LEA         $00001234, A5
-00007014  0C80 00000005             16      CMPI.L    #5, D0
-0000701A  0CB8 0001B6D9 1234        17      CMPI.L        #112345, $00001234
-00007022  0C01 0003                 18      CMPI.B          #3,D1
-00007026  0C79 0005 FFFF1234        19      CMPI.W          #5, $FFFF1234
-0000702E  5343                      20      SUBQ        #1, D3
-00007030  5139 11112345             21      SUBQ.B      #8, $11112345
-00007036  53B8 1234                 22       SUBQ.L      #1, $00001234
-0000703A  81F8 1234                 23      DIVS.W         $00001234,D0
-0000703E  8BF8 1200                 24      DIVS.W          $1200, D5
-00007042  85F9 FFFF3658             25      DIVS.W         $FFFF3658,D2 
-00007048  9805                      26          SUB.B     D5,D4
-0000704A  9845                      27      SUB.W     D5,D4
-0000704C  9885                      28     SUB.L     D5,D4
-0000704E  93B8 1234                 29      SUB.L     D1,$00001234
-00007052  92B8 1234                 30      SUB.L     $00001234,D1
-00007056  93B9 FFFF1234             31      SUB.L     D1, $FFFF1234
-0000705C  92B9 FFFF1234             32      SUB.L       $FFFF1234,D1
-00007062  B079 FFFF1234             33      CMP    $FFFF1234,D0
-00007068  B240                      34     CMP     D0,D1
-0000706A  B849                      35     CMP     A1,D4
-0000706C  BA39 FFFF1234             36     CMP.B  $FFFF1234,D5
-00007072  BC38 1234                 37     CMP.B   $00001234,D6
-00007076  BE78 1234                 38     CMP.W     $1234,D7
-0000707A  B2B8 1234                 39     CMP.L      $1234,D1
-0000707E  6100 0108                 40      BSR       TEST
-00007082  6000 010A                 41      BRA       NO_TEST
-00007086  C0FC 0003                 42         MULU #3,D0
-0000708A  CAF8 1234                 43     MULU $00001234,D5
-0000708E  CCF9 FFFF1100             44     MULU.W $FFFF1100, D6
-00007094  C3FC 002D                 45      MULS #45,D1
-00007098  CFF8 1234                 46      MULS $00001234,D7
-0000709C  C5F9 FFFF1000             47      MULS $FFFF1000, D2
-000070A2  D200                      48      ADD.B        D0,D1
-000070A4  D041                      49      ADD.W        D1,D0
-000070A6  D2B8 1234                 50      ADD.L        $00001234,D1
-000070AA  D378 1234                 51      ADD        D1,  $00001234
-000070AE  D2B9 FFFF1234             52      ADD.L        $FFFF1234,D1
-000070B4  D539 FFFF1234             53      ADD.B        D2, $FFFF1234
-000070BA                            54     * ADD.B        #1,D5
-000070BA                            55    *  ADD.W        #10,D6
-000070BA  5A49                      56      ADDA         #5,A1
-000070BC  D4F8 1234                 57      ADDA.W         $0001234,A2
-000070C0  D1F9 FFFF1234             58      ADDA.L        $FFFF1234,A0
-000070C6  92FC 000C                 59      SUBA         #12,A1
-000070CA  95F8 1234                 60      SUBA.L          $00001234,A2
-000070CE  98F9 FFF12345             61      SUBA.W           $FFF12345, A4
-000070D4  5941                      62      SUB.W           #4,D1
-000070D6  E7F8 1234                 63      ROL $00001234
-000070DA  E7F9 FFFF1123             64      ROL $FFFF1123
-000070E0  E6F8 1234                 65      ROR $00001234
-000070E4  E6F9 FFFF1123             66      ROR $FFFF1123
-000070EA  E6D9                      67      ROR (A1)+
-000070EC  E6E2                      68      ROR -(A2)    
-000070EE  E33A                      69      ROL.B   D1,D2
-000070F0  E37A                      70      ROL.W   D1,D2
-000070F2  E7BC                      71      ROL.L   D3,D4
-000070F4  E11D                      72      ROL.B   #8,D5
-000070F6  E95E                      73      ROL.W   #4,D6
-000070F8  E399                      74      ROL.L   #1,D1     
-000070FA  E3F8 1234                 75      LSL $00001234
-000070FE  E3F9 FFFF1123             76      LSL $FFFF1123
-00007104  E2F8 1234                 77      LSR $00001234
-00007108  E2F9 FFFF1123             78      LSR $FFFF1123
-0000710E  E2D9                      79      LSR (A1)+
-00007110  E2E2                      80      LSR -(A2)    
-00007112  E32A                      81      LSL.B   D1,D2
-00007114  E36A                      82      LSL.W   D1,D2
-00007116  E7AC                      83      LSL.L   D3,D4
-00007118  E10D                      84      LSL.B   #8,D5
-0000711A  E94E                      85      LSL.W   #4,D6
-0000711C  E389                      86      LSL.L   #1,D1  
-0000711E  E1F8 1234                 87      ASL $00001234
-00007122  E1F9 FFFF1123             88      ASL $FFFF1123
-00007128  E0F8 1234                 89      ASR $00001234
-0000712C  E0F9 FFFF1123             90      ASR $FFFF1123
-00007132  E0D9                      91      ASR (A1)+
-00007134  E0E2                      92      ASR -(A2)    
-00007136  E322                      93      ASL.B   D1,D2
-00007138  E362                      94      ASL.W   D1,D2
-0000713A  E7A4                      95      ASL.L   D3,D4
-0000713C  E105                      96      ASL.B   #8,D5
-0000713E  E946                      97      ASL.W   #4,D6
-00007140  E381                      98      ASL.L   #1,D1
-00007142  31C1 1234                 99      MOVE    D1,$00001234
-00007146  2038 1234                100      MOVE.L $00001234,D0
-0000714A  31C1 1234                101      MOVE.W D1, $00001234
-0000714E  1A39 FFFF1234            102      MOVE.B $FFFF1234,D5
-00007154  13D1 00012134            103      MOVE.B  (A1),$000012134
-0000715A  33E2 FFFF1234            104      MOVE.W  -(A2),$FFFF1234
-00007160  2A19                     105      MOVE.L  (A1)+, D5
-00007162  360A                     106      MOVE.W A2,D3
-00007164  3A3C 007B                107      MOVE.W #123, D5
-00007168  1C3C 000C                108      MOVE.B #12,D6
-0000716C  7A0E                     109      MOVE.L #14,D5
-0000716E  7E14                     110      MOVE.L #20, D7
-00007170  3278 1234                111      MOVEA.W $00001234,A1
-00007174  2479 FFFF1234            112      MOVEA.L $FFFF1234,A2
-0000717A  3252                     113      MOVEA.W (A2),A1
-0000717C  265A                     114      MOVEA.L (A2)+,A3
-0000717E  3663                     115      MOVEA.W -(A3),A3
-00007180  3667                     116      MOVEA.W -(SP),A3
-00007182  3867                     117      MOVEA.W -(A7),A4
-00007184                           118    
-00007184  FFFF FFFF                119      SIMHALT             ; halt simulator
-00007188                           120  
-00007188                           121  * Put variables and constants here
-00007188                           122  TEST
-00007188  323C 0000                123      MOVE.W      #0,D1
-0000718C  4E75                     124      RTS
-0000718E                           125      
-0000718E                           126      
-0000718E                           127      
-0000718E                           128      
-0000718E                           129  NO_TEST
-0000718E  343C 0004                130      MOVE.W     #4,D2
-00007192  4E75                     131      RTS
-00007194                           132      END    START        ; last line of source
+00007004  44B9 00511234             13      NEG.L       $00511234       
+0000700A  4400                      14      NEG.B       D0
+0000700C  4441                      15      NEG.W       D1
+0000700E  4451                      16      NEG.W       (A1)
+00007010  4461                      17      NEG         -(A1)
+00007012  4459                      18      NEG         (A1)+
+00007014  4E92                      19      JSR         (A2)
+00007016  4EB9 00123658             20      JSR         $00123658
+0000701C  4BF8 1234                 21      LEA         $00001234, A5
+00007020  4BD4                      22      LEA         (A4),A5
+00007022                            23  
+00007022                            24           
+00007022  0C80 00000005             25      CMPI.L      #5, D0
+00007028  0CB8 0001B6D9 1234        26      CMPI.L      #112345, $00001234
+00007030  0C01 0003                 27      CMPI.B      #3,D1
+00007034  0C79 0005 FFFF1234        28      CMPI.W      #5, $FFFF1234
+0000703C  0C51 0002                 29      CMPI        #2, (A1)
+00007040                            30      
+00007040                            31      
+00007040  5343                      32      SUBQ        #1, D3
+00007042  5139 11112345             33      SUBQ.B      #8, $11112345
+00007048  53B8 1234                 34      SUBQ.L      #1, $00001234
+0000704C                            35      
+0000704C                            36  
+0000704C  81F8 1234                 37      DIVS.W      $00001234,D0
+00007050  8BF8 1200                 38      DIVS.W      $1200, D5
+00007054  85F9 FFFF3658             39      DIVS.W      $FFFF3658,D2 
+0000705A  8441                      40      OR          D1,D2
+0000705C  8378 1234                 41      OR          D1, $00001234
+00007060  8551                      42      OR          D2, (A1)
+00007062  8651                      43      OR          (A1), D3
+00007064  835A                      44      OR          D1, (A2)+
+00007066  8662                      45      OR          -(A2), D3
+00007068  8773 5000                 46      OR          D3, 0(A3,D5) * One known bug, the data is interpretted as ADDQ
+0000706C  8773 5000                 47      OR          D3, 0(A3,D5)
+00007070                            48  
+00007070  9805                      49      SUB.B       D5,D4
+00007072  9845                      50      SUB.W       D5,D4
+00007074  9885                      51      SUB.L       D5,D4
+00007076  93B8 1234                 52      SUB.L       D1,$00001234
+0000707A  92B8 1234                 53      SUB.L       $00001234,D1
+0000707E  93B9 FFFF1234             54      SUB.L       D1, $FFFF1234
+00007084  92B9 FFFF1234             55      SUB.L       $FFFF1234,D1
+0000708A  9650                      56      SUB         (A0),D3
+0000708C  9351                      57      SUB         D1, (A1)
+0000708E  9661                      58      SUB         -(A1), D3
+00007090  9973 5000                 59      SUB         D4, 0(A3,D5) * One known bug, data is interpretted as ADDQ
+00007094  9973 5000                 60      SUB         D4, 0(A3,D5) * P.S: Not a bug, a feature
+00007098                            61      
+00007098  B079 FFFF1234             62      CMP         $FFFF1234,D0
+0000709E  B240                      63      CMP         D0,D1
+000070A0  B849                      64      CMP         A1,D4
+000070A2  BA39 FFFF1234             65      CMP.B       $FFFF1234,D5
+000070A8  BC38 1234                 66      CMP.B       $00001234,D6
+000070AC  BE78 1234                 67      CMP.W       $1234,D7
+000070B0  B2B8 1234                 68      CMP.L       $1234,D1
+000070B4                            69      
+000070B4  6100 0126                 70      BSR         TEST        * Extra
+000070B8                            71      
+000070B8  6000 0128                 72      BRA         NO_TEST
+000070BC  6A00 011E                 73      BPL         TEST
+000070C0  6C00 011A                 74      BGE         TEST    
+000070C4  6200 0116                 75      BHI         TEST
+000070C8  6800 0112                 76      BVC         TEST
+000070CC  6D00 010E                 77      BLT         TEST
+000070D0  6500 010A                 78      BCS         TEST
+000070D4                            79      
+000070D4  C0FC 0003                 80      MULU        #3,D0
+000070D8  CAF8 1234                 81      MULU        $00001234,D5
+000070DC  CCF9 FFFF1100             82      MULU.W      $FFFF1100, D6
+000070E2  C3FC 002D                 83      MULS        #45,D1
+000070E6  CFF8 1234                 84      MULS        $00001234,D7
+000070EA  C5F9 FFFF1000             85      MULS        $FFFF1000, D2
+000070F0  D200                      86      ADD.B       D0,D1
+000070F2  D041                      87      ADD.W       D1,D0
+000070F4  D2B8 1234                 88      ADD.L       $00001234,D1
+000070F8  D378 1234                 89      ADD         D1,$00001234
+000070FC  D2B9 FFFF1234             90      ADD.L       $FFFF1234,D1
+00007102  D539 FFFF1234             91      ADD.B       D2, $FFFF1234
+00007108  5205                      92      ADD.B        #1,D5
+0000710A  0646 000A                 93      ADD.W        #10,D6
+0000710E  5A49                      94      ADDA        #5,A1
+00007110  D4F8 1234                 95      ADDA.W      $0001234,A2
+00007114  D1F9 FFFF1234             96      ADDA.L      $FFFF1234,A0
+0000711A  92FC 000C                 97      SUBA        #12,A1
+0000711E  95F8 1234                 98      SUBA.L      $00001234,A2
+00007122  98F9 FFF12345             99      SUBA.W      $FFF12345, A4
+00007128  5941                     100      SUB.W       #4,D1
+0000712A  E7F8 1234                101      ROL         $00001234
+0000712E  E7F9 FFFF1123            102      ROL         $FFFF1123
+00007134  E6F8 1234                103      ROR         $00001234
+00007138  E6F9 FFFF1123            104      ROR         $FFFF1123
+0000713E  E6D9                     105      ROR         (A1)+
+00007140  E6E2                     106      ROR         -(A2)    
+00007142  E33A                     107      ROL.B       D1,D2
+00007144  E37A                     108      ROL.W       D1,D2
+00007146  E7BC                     109      ROL.L       D3,D4
+00007148  E11D                     110      ROL.B       #8,D5
+0000714A  E95E                     111      ROL.W       #4,D6
+0000714C  E399                     112      ROL.L       #1,D1     
+0000714E  E3F8 1234                113      LSL         $00001234
+00007152  E3F9 FFFF1123            114      LSL         $FFFF1123
+00007158  E2F8 1234                115      LSR         $00001234
+0000715C  E2F9 FFFF1123            116      LSR         $FFFF1123
+00007162  E2D9                     117      LSR         (A1)+
+00007164  E2E2                     118      LSR         -(A2)    
+00007166  E32A                     119      LSL.B       D1,D2
+00007168  E36A                     120      LSL.W       D1,D2
+0000716A  E7AC                     121      LSL.L       D3,D4
+0000716C  E10D                     122      LSL.B       #8,D5
+0000716E  E94E                     123      LSL.W       #4,D6
+00007170  E389                     124      LSL.L       #1,D1  
+00007172  E1F8 1234                125      ASL         $00001234
+00007176  E1F9 FFFF1123            126      ASL         $FFFF1123
+0000717C  E0F8 1234                127      ASR         $00001234
+00007180  E0F9 FFFF1123            128      ASR         $FFFF1123
+00007186  E0D9                     129      ASR         (A1)+
+00007188  E0E2                     130      ASR         -(A2)    
+0000718A  E322                     131      ASL.B       D1,D2
+0000718C  E362                     132      ASL.W       D1,D2
+0000718E  E7A4                     133      ASL.L       D3,D4
+00007190  E105                     134      ASL.B       #8,D5
+00007192  E946                     135      ASL.W       #4,D6
+00007194  E381                     136      ASL.L       #1,D1
+00007196  31C1 1234                137      MOVE        D1,$00001234
+0000719A  2038 1234                138      MOVE.L      $00001234,D0
+0000719E  31C1 1234                139      MOVE.W      D1, $00001234
+000071A2  1A39 FFFF1234            140      MOVE.B      $FFFF1234,D5
+000071A8  13D1 00012134            141      MOVE.B      (A1),$000012134
+000071AE  33E2 FFFF1234            142      MOVE.W      -(A2),$FFFF1234
+000071B4  2A19                     143      MOVE.L      (A1)+, D5
+000071B6  360A                     144      MOVE.W      A2,D3
+000071B8  3A3C 007B                145      MOVE.W      #123, D5
+000071BC  1C3C 000C                146      MOVE.B      #12,D6
+000071C0  7A0E                     147      MOVE.L      #14,D5
+000071C2  7E14                     148      MOVE.L      #20, D7
+000071C4  3278 1234                149      MOVEA.W     $00001234,A1
+000071C8  2479 FFFF1234            150      MOVEA.L     $FFFF1234,A2
+000071CE  3252                     151      MOVEA.W     (A2),A1
+000071D0  265A                     152      MOVEA.L     (A2)+,A3
+000071D2  3663                     153      MOVEA.W     -(A3),A3
+000071D4  3667                     154      MOVEA.W     -(SP),A3
+000071D6  3867                     155      MOVEA.W     -(A7),A4
+000071D8                           156    
+000071D8  FFFF FFFF                157      SIMHALT             ; halt simulator
+000071DC                           158  
+000071DC                           159  * Put variables and constants here
+000071DC                           160  TEST
+000071DC  323C 0000                161      MOVE.W      #0,D1
+000071E0  4E75                     162      RTS
+000071E2                           163      
+000071E2                           164      
+000071E2                           165      
+000071E2                           166      
+000071E2                           167  NO_TEST
+000071E2  343C 0004                168      MOVE.W     #4,D2
+000071E6  4E75                     169      RTS
+000071E8                           170      END    START        ; last line of source
 
 No errors detected
 No warnings generated
@@ -142,6 +180,6 @@ No warnings generated
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
-NO_TEST             718E
+NO_TEST             71E2
 START               7000
-TEST                7188
+TEST                71DC

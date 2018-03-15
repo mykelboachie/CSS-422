@@ -653,9 +653,11 @@ SUB_HELPER_FUNCTION
 * Helper method to help with printing from register to memory
 ***
 SUB_HELPER_REGISTER_TO_MEM
+    MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR
     JSR         PRINT_DATA_MODE_DESTINATION
     JSR         PRINT_COMMA
     JSR         PRINT_EMPTY_SPACE
+    MOVE.W      SOURCE_VAR, THIRD_TEMP_VAR
     JSR         REGISTER_MODE_000
     BSR         USER_INPUT_ENTER
     BRA         PARSING_OP_CODE
@@ -1332,7 +1334,7 @@ FIRST_NIBBLE_IS_E                                       * There are 2 types for 
     MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
     JSR         CHECK_TYPE_DATA
     JSR         GET_THE_THIRD_NIBBLE                    * For ASd and LSd, the lat bit is 0 of third nibble is 0
-        LSL         #8,D3                               * Get the last bit of the second
+    LSL         #8,D3                                   * Get the last bit of the second
     LSL         #7,D3
     LSR         #7,D3
     LSR         #8,D3
@@ -1852,6 +1854,7 @@ F                       DC.W        'F',0
 
 
     END    START        ; last line of source
+
 
 *~Font name~Courier New~
 *~Font size~14~
