@@ -206,10 +206,19 @@ PREPARE_START_AND_END_ADDRESS
 * Wait for the user to press enter to continue
 ***
 USER_INPUT_ENTER
-    MOVE.B      #5,D0
+    ADD         #1,D6
+    CMP         #30,D6 * Need to run this 30 times (3o statements before user need to enter)
+    BEQ         PRESS_ENTER_TO_CONTINUE
+    LEA         SPACE,A1
+    MOVE        #13,D0
     TRAP        #15
     RTS
 
+PRESS_ENTER_TO_CONTINUE
+    MOVE        #0,D6
+    MOVE.B      #5,D0
+    TRAP        #15
+    RTS
 
 ********************************************************************************
 *********************************************
@@ -1097,6 +1106,9 @@ GET_NORMAL_SIZE
 * Display prompt saying that it has finished disassembling
 ***
 FINISH_DISASSEMBLING
+    LEA         SPACE,A1
+    MOVE.B      #13,D0
+    TRAP        #15
     LEA         FINISH,A1
     JSR         PRINT_TO_SCREEN_ENTIRE_STRING
     SIMHALT
@@ -1671,13 +1683,22 @@ CONDITION_FALSE
     BRA         INVALID
 
 CONDITION_HIGHER
-    BRA         INVALID
+    LEA         HIGHER_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_LOWER_OR_SAME
-    BRA         INVALID
+    LEA         LOWER_OR_SAME_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_CARRY_CLEAR
-    BRA         INVALID
+    LEA         CARRY_CLEAR_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 
 
@@ -1688,9 +1709,16 @@ CONDITION_CARRY_SET
     RTS
 
 CONDITION_NOT_EQUAL
-    BRA         INVALID
+    LEA         NOT_EQUAL_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
+
 CONDITION_EQUAL
-    BRA         INVALID
+    LEA         EQUAL_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_OVERFLOW_CLEAR
     LEA         OVERFLOW_CLEAR_VALUE,A1
@@ -1699,13 +1727,22 @@ CONDITION_OVERFLOW_CLEAR
     RTS
 
 CONDITION_OVERFLOW_SET
-    BRA         INVALID
+    LEA         OVERFLOW_SET_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_PLUS
-    BRA         INVALID
+    LEA         PLUS_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_MINUS
-    BRA         INVALID
+    LEA         MINUS_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_GREATER_OR_EQUAL
     LEA         GREATER_OR_EQUAL_VALUE,A1
@@ -1720,10 +1757,16 @@ CONDITION_LESS_THAN
     RTS
 
 CONDITION_GREATER_THAN
-    BRA         INVALID
+    LEA         GREATER_THAN_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 CONDITION_LESS_OR_EQUAL
-    BRA         INVALID
+    LEA         LESS_OR_EQUAL_VALUE,A1
+    JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+    JSR         PRINT_EMPTY_SPACE
+    RTS
 
 RIGHT_OR_LEFT_JUMP_TABLE
     JMP         RIGHT_DIRECTION_PRINT
@@ -1815,10 +1858,20 @@ MOVEA_VALUE             DC.W        'MOVEA',0   * Requested
 MOVE_VALUE              DC.W        'MOVE',0    * Requested
 MOVEQ_VALUE             DC.W        'MOVEQ',0   * Extra
 DATA_VALUE              DC.W        'DATA',0
-OVERFLOW_CLEAR_VALUE    DC.W        'VC',0
-GREATER_OR_EQUAL_VALUE  DC.W        'GE',0
-LESS_THAN_VALUE         DC.W        'LT',0
-CARRY_SET_VALUE         DC.W        'CS',0
+HIGHER_VALUE            DC.W        'HI',0
+LOWER_OR_SAME_VALUE     DC.W        'LS',0
+CARRY_CLEAR_VALUE       DC.W        'CC',0
+NOT_EQUAL_VALUE         DC.W        'NE',0
+EQUAL_VALUE             DC.W        'EQ',0
+OVERFLOW_CLEAR_VALUE    DC.W        'VC',0 *
+OVERFLOW_SET_VALUE      DC.W        'VS',0
+PLUS_VALUE              DC.W        'PL',0
+MINUS_VALUE             DC.W        'MI',0
+GREATER_OR_EQUAL_VALUE  DC.W        'GE',0 *
+LESS_THAN_VALUE         DC.W        'LT',0 *
+GREATER_THAN_VALUE      DC.W        'GT',0
+LESS_OR_EQUAL_VALUE     DC.W        'LE',0
+CARRY_SET_VALUE         DC.W        'CS',0 *
 SR_VALUE                DC.W        'SR',0
 CCR_VALUE               DC.W        'CCR',0
 OPENING_BRACKET         DC.W        '(',0
@@ -1854,6 +1907,7 @@ F                       DC.W        'F',0
 
 
     END    START        ; last line of source
+
 
 
 *~Font name~Courier New~

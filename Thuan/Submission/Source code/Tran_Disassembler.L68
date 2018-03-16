@@ -1,0 +1,2187 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 3/15/2018 11:08:34 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : 68k Disassembler
+00000000                             3  * Written by : Thuan Tran
+00000000                             4  * Date       : March 11th, 2018
+00000000                             5  * Description: Load a test file, enter starting and ending address. Press enter to see it disassemble every line
+00000000                             6  *-----------------------------------------------------------
+00000000                             7  
+00000000                             8  *** A2 will be used as the address in which it will iterate through all the way until ending adrress
+00000000                             9  *** A3 will be used to store the ending address
+00000000                            10  
+00000000  =00000100                 11  STARTING_ADDRESS            EQU    $100 * User input starting address
+00000000  =00000150                 12  ENDING_ADDRESS              EQU    $150 * User input ending address
+00000000  =00000200                 13  TEMP_CURRENT_4_NIBBLES      EQU    $200 * Temporary variable to hold 4 nibble at a time
+00000000  =00000250                 14  DESTINATION_VAR             EQU    $250 * Used to hold the Address number     (11-9th bit)
+00000000  =00000300                 15  DESTINATION_MODE            EQU    $300 * Used to hold the mode of destination (8-6 bit)
+00000000  =00000350                 16  SOURCE_MODE                 EQU    $350 * used to hold the mode of the source (5-3)
+00000000  =00000400                 17  SOURCE_VAR                  EQU    $400 * Used to hold the address number of source (2-0 bit)
+00000000  =00000550                 18  THIRD_TEMP_VAR              EQU    $550 * Used as an arbitrary storage for data
+00000000  =00000600                 19  FOURTH_TEMP_VAR             EQU    $600 * Used to prevent overwrite to (A1) when getting end address
+00000000  =00000650                 20  FIFTH_TEMP_VAR              EQU    $650 * Used to prevent overwrite to (A1) when getting start address
+00000000  =00000750                 21  TEMP_CURRENT_2_NIBBLES      EQU    $750 * Temporary variable to store 2 nibble at a time
+00000000                            22  
+00000000                            23  ***
+00000000                            24  * Beginning of the program
+00000000                            25  ***
+00000000                            26  
+00001000                            27      ORG    $1000
+00001000                            28  START:                  ; first instruction of program
+00001000                            29  
+00001000                            30  ********************************************************************************
+00001000                            31  *****************************************
+00001000                            32  * Start of input and parsing op code section
+00001000                            33  *****************************************
+00001000                            34  ********************************************************************************
+00001000                            35  
+00001000                            36  ***
+00001000                            37  * Display welcome prompt to user and ask for starting address
+00001000                            38  ***
+00001000                            39  GET_START_ADDRESS
+00001000  43F9 00002212             40      LEA         INTRO_STARTING,A1                       * Welcome the user
+00001006  103C 000D                 41      MOVE.B      #13,D0                                  * Nice to have carry and line feed
+0000100A  4E4F                      42      TRAP        #15
+0000100C  227C 00000000             43      MOVEA.L     #0,A1                                   * Clear what is in A1
+00001012  43F8 0650                 44      LEA         FIFTH_TEMP_VAR,A1                       * This was made so that when we read a string, it won't overide (A1)
+00001016  4240                      45      CLR         D0
+00001018  4241                      46      CLR         D1
+0000101A  103C 0002                 47      MOVE.B      #2,D0                                   * Get a string input that represent the user
+0000101E  4E4F                      48      TRAP        #15
+00001020  6000 003E                 49      BRA         CONVERT_ASCII_TO_HEX
+00001024                            50  
+00001024                            51  ***
+00001024                            52  * Display prompt to user and ask for ending address
+00001024                            53  ***
+00001024                            54  GET_END_ADDRESS
+00001024  43F9 00002232             55      LEA         INTRO_ENDING,A1                         * Now time to get the ending address
+0000102A  103C 000D                 56      MOVE.B      #13,D0
+0000102E  4E4F                      57      TRAP        #15
+00001030  43F8 0600                 58      LEA         FOURTH_TEMP_VAR,A1                      *Same like get starting address
+00001034  103C 0002                 59      MOVE.B      #2,D0
+00001038  4E4F                      60      TRAP        #15
+0000103A  6000 0024                 61      BRA         CONVERT_ASCII_TO_HEX
+0000103E                            62  
+0000103E                            63  ***
+0000103E                            64  * Parsing 4 nibbles sequentially and decoding them based on the first nibble (left most)
+0000103E                            65  ***
+0000103E                            66  PARSING_OP_CODE
+0000103E  4EB9 00001952             67      JSR         PRINT_ADDRESS_LOCATION
+00001044  4EB9 00001A0A             68      JSR         GET_NEXT_FOUR_NIBBLE
+0000104A  3638 0200                 69      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+0000104E  4EB9 000019EA             70      JSR         GET_THE_FIRST_NIBBLE
+00001054  C6FC 0006                 71      MULU        #6,D3                                   * Get the index
+00001058  4EB0 3000                 72      JSR         0(A0,D3)                                * Jump to the table depemding on first nibble
+0000105C  FFFF FFFF                 73      SIMHALT
+00001060                            74  
+00001060                            75  ***
+00001060                            76  *This is called during the first part of program, when trying to convert user starting and ending address
+00001060                            77  * Convert 0-9 and A-F in ASCII to Hex Value
+00001060                            78  *ascii table http://www.asciitable.com/
+00001060                            79  ***
+00001060                            80  CONVERT_ASCII_TO_HEX
+00001060  1019                      81      MOVE.B      (A1)+,D0                                * Go through each byte of the address
+00001062  B03C 0030                 82      CMP.B       #$30,D0                                 * Valid data are from $30 - $39 ( 0-9) and $41 - $46 (A-F)
+00001066  6D00 00B8                 83      BLT         ERROR_INVALID_INPUT
+0000106A  B03C 0039                 84      CMP.B       #$39,D0                                 * check if in the range number of hex character
+0000106E  6E00 0016                 85      BGT         CONVERT_CHARACTER_ASCII_TO_HEX
+00001072  0400 0030                 86      SUB.B       #$30,D0                                 * Get the hex range from '0-9'
+00001076  D680                      87      ADD.L       D0,D3
+00001078  5341                      88      SUBI        #1,D1                                   * Decrement the counter for length of address
+0000107A  B23C 0000                 89      CMP.B       #0,D1
+0000107E  6700 002A                 90      BEQ         FINISH_CONVERT_STARTING_ADDRESS
+00001082  E98B                      91      LSL.L       #4,D3                                   * Get space for next nibble
+00001084  60DA                      92      BRA         CONVERT_ASCII_TO_HEX
+00001086                            93  
+00001086                            94  ***
+00001086                            95  * Convert A-F in ASCII to hex value
+00001086                            96  ***
+00001086                            97  CONVERT_CHARACTER_ASCII_TO_HEX
+00001086  B03C 0041                 98      CMP.B       #$41,D0                                 * At this point, the data must be larger than number
+0000108A  6D00 0094                 99      BLT         ERROR_INVALID_INPUT                     * Only $41 - 46 are valid
+0000108E  B03C 0046                100      CMP.B       #$46,D0
+00001092  6E00 008C                101      BGT         ERROR_INVALID_INPUT                     * Greater than $46, nope
+00001096  0400 0037                102      SUB.B       #$37,D0                                 * Get the A-F value
+0000109A  D680                     103      ADD.L       D0,D3                                   * Save the value
+0000109C  5341                     104      SUBI        #1,D1                                   * Decrement the counter
+0000109E  B23C 0000                105      CMP.B       #0,D1
+000010A2  6700 0006                106      BEQ         FINISH_CONVERT_STARTING_ADDRESS
+000010A6  E98B                     107      LSL.L       #4,D3                                   * Shift the value to the left 4 bits to save room for another nibble
+000010A8  60B6                     108      BRA         CONVERT_ASCII_TO_HEX
+000010AA                           109  
+000010AA                           110  ***
+000010AA                           111  *   Save the starting addres to an appropriate place and also test if it is valid
+000010AA                           112  ***
+000010AA                           113  FINISH_CONVERT_STARTING_ADDRESS
+000010AA  0803 0000                114      BTST        #0,D3                                   * Test last bit of the address to see if it is even or odd
+000010AE  6600 0040                115      BNE         INVALID_STARTING_ADDRESS
+000010B2  B47C 0001                116      CMP         #1,D2                                   * Check if we are doing starting or ending address
+000010B6  6700 000C                117      BEQ         FINISH_CONVERT_ENDING_ADDRESS
+000010BA  5242                     118      ADDI        #1,D2                                   * Counter to make sure that we are doing the ending address
+000010BC  21C3 0100                119      MOVE.L      D3,STARTING_ADDRESS
+000010C0  6000 FF62                120      BRA         GET_END_ADDRESS
+000010C4                           121  
+000010C4                           122  ***
+000010C4                           123  * Save the ending address to an appropriate place and also test if it is valid
+000010C4                           124  ***
+000010C4                           125  FINISH_CONVERT_ENDING_ADDRESS
+000010C4  0803 0000                126      BTST        #0,D3                                   * Check for odd address
+000010C8  6600 003E                127      BNE         INVALID_ENDING_ADDRESS
+000010CC  B6B8 0100                128      CMP.L       STARTING_ADDRESS, D3                    * Check if the ending address is less than or equal starting address
+000010D0  6F00 0036                129      BLE         INVALID_ENDING_ADDRESS
+000010D4  4242                     130      CLR.W       D2                                      * Clear the second data register for future use
+000010D6  21C3 0150                131      MOVE.L      D3,ENDING_ADDRESS
+000010DA  4243                     132      CLR.W       D3
+000010DC  43F9 000023C2            133      LEA         SPACE,A1
+000010E2  103C 000D                134      MOVE.B      #13,D0
+000010E6  4E4F                     135      TRAP        #15
+000010E8  6000 0090                136      BRA         PREPARE_START_AND_END_ADDRESS
+000010EC  FFFF FFFF                137      SIMHALT
+000010F0                           138  
+000010F0                           139  ***
+000010F0                           140  * Display the prompt invalid and ask user to enter again for invalid starting address
+000010F0                           141  ***
+000010F0                           142  INVALID_STARTING_ADDRESS
+000010F0  227C 00000000            143      MOVEA.L     #0,A1
+000010F6  43F9 00002250            144      LEA         INVALID_INPUT,A1
+000010FC  103C 000D                145      MOVE.B      #13,D0
+00001100  4E4F                     146      TRAP        #15
+00001102  4243                     147      CLR         D3
+00001104  6000 FEFA                148      BRA         GET_START_ADDRESS
+00001108                           149  
+00001108                           150  ***
+00001108                           151  * Display the prompt invalid and ask user to enter again for ending address
+00001108                           152  ***
+00001108                           153  INVALID_ENDING_ADDRESS
+00001108  227C 00000000            154      MOVEA.L     #0,A1
+0000110E  43F9 00002250            155      LEA         INVALID_INPUT,A1
+00001114  103C 000D                156      MOVE.B      #13,D0
+00001118  4E4F                     157      TRAP        #15
+0000111A  4243                     158      CLR         D3
+0000111C  6000 FF06                159      BRA         GET_END_ADDRESS
+00001120                           160  
+00001120                           161  ***
+00001120                           162  * Used to direct invalid address entered either to invalid starting or ending address
+00001120                           163  ***
+00001120                           164  ERROR_INVALID_INPUT
+00001120  B47C 0001                165      CMP         #1,D2
+00001124  67E2                     166      BEQ         INVALID_ENDING_ADDRESS
+00001126  60C8                     167      BRA         INVALID_STARTING_ADDRESS
+00001128                           168  
+00001128                           169  ***
+00001128                           170  * This is usally called during the program's execution.
+00001128                           171  * Used for printing out address location, immediate data, absolute short and long ,..etc
+00001128                           172  * Print out each nibble at a time (4 nibbles total)
+00001128                           173  ***
+00001128                           174  CONVERT_HEX_TO_ASCII
+00001128  49F9 00001E76            175      LEA         HEX_CHARACTER_JUMP_TABLE,A4             * Load the table to print out ascii charracter
+0000112E  3638 0200                176      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001132  4EB9 000019EA            177      JSR         GET_THE_FIRST_NIBBLE                    * Get the left most hex value and convert
+00001138  C6FC 0006                178      MULU        #6,D3
+0000113C  4EB4 3000                179      JSR         0(A4,D3)
+00001140  3638 0200                180      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001144  4EB9 000019F0            181      JSR         GET_THE_SECOND_NIBBLE
+0000114A  C6FC 0006                182      MULU        #6,D3
+0000114E  4EB4 3000                183      JSR         0(A4,D3)
+00001152  3638 0200                184      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001156  4EB9 000019F8            185      JSR         GET_THE_THIRD_NIBBLE
+0000115C  C6FC 0006                186      MULU        #6,D3
+00001160  4EB4 3000                187      JSR         0(A4,D3)
+00001164  3638 0200                188      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001168  4EB9 00001A00            189      JSR         GET_THE_FOURTH_NIBBLE
+0000116E  C6FC 0006                190      MULU        #6,D3
+00001172  4EB4 3000                191      JSR         0(A4,D3)
+00001176  4243                     192      CLR.W       D3
+00001178  4E75                     193      RTS
+0000117A                           194  
+0000117A                           195  
+0000117A                           196  ***
+0000117A                           197  * Called when starting and ending address was entered and converted correctly
+0000117A                           198  ***
+0000117A                           199  PREPARE_START_AND_END_ADDRESS
+0000117A  41F9 00001ACC            200      LEA         FIRST_NIBBLE_JUMP_TABLE,A0              * Prepare the jump table for first nibble decoding
+00001180  2478 0100                201      MOVE.L      STARTING_ADDRESS,A2
+00001184  2678 0150                202      MOVE.L      ENDING_ADDRESS,A3
+00001188  6000 FEB4                203      BRA         PARSING_OP_CODE                         * Start parsing the opcode now
+0000118C                           204  
+0000118C                           205  ***
+0000118C                           206  * Wait for the user to press enter to continue
+0000118C                           207  ***
+0000118C                           208  USER_INPUT_ENTER
+0000118C  5246                     209      ADD         #1,D6
+0000118E  BC7C 001E                210      CMP         #30,D6 * Need to run this 30 times (3o statements before user need to enter)
+00001192  6700 0010                211      BEQ         PRESS_ENTER_TO_CONTINUE
+00001196  43F9 000023C2            212      LEA         SPACE,A1
+0000119C  303C 000D                213      MOVE        #13,D0
+000011A0  4E4F                     214      TRAP        #15
+000011A2  4E75                     215      RTS
+000011A4                           216  
+000011A4                           217  PRESS_ENTER_TO_CONTINUE
+000011A4  3C3C 0000                218      MOVE        #0,D6
+000011A8  103C 0005                219      MOVE.B      #5,D0
+000011AC  4E4F                     220      TRAP        #15
+000011AE  4E75                     221      RTS
+000011B0                           222  
+000011B0                           223  ********************************************************************************
+000011B0                           224  *********************************************
+000011B0                           225  * Print the decoded opcode and data to console
+000011B0                           226  * This section will also be the place where most of the logic is done
+000011B0                           227  *********************************************
+000011B0                           228  ********************************************************************************
+000011B0                           229  
+000011B0                           230  
+000011B0                           231  ***
+000011B0                           232  * Called when an invalid instructions or data accessing mode was encounterd
+000011B0                           233  ***
+000011B0                           234  INVALID
+000011B0  43F9 0000235E            235      LEA         DATA_VALUE,A1
+000011B6  4EB9 00001916            236      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000011BC  4EB9 000019D2            237      JSR         PRINT_EMPTY_SPACE
+000011C2  4EB9 000019C6            238      JSR         PRINT_HEX_SYMBOL
+000011C8  4EB8 1128                239      JSR         CONVERT_HEX_TO_ASCII                    * Print out the op code that was not decoded
+000011CC  43F9 000023C2            240      LEA         SPACE,A1 * Go to new line
+000011D2  103C 000E                241      MOVE.B      #14,D0
+000011D6  4E4F                     242      TRAP        #15
+000011D8  61B2                     243      BSR         USER_INPUT_ENTER
+000011DA  6000 FE62                244      BRA         PARSING_OP_CODE                         * Get the next four nibbles and parsing
+000011DE                           245  
+000011DE                           246  ***
+000011DE                           247  * Print out the NEG Instruction with only 1 operands to follow
+000011DE                           248  ***
+000011DE                           249  PRINT_OUT_NEG
+000011DE  3638 0200                250      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000011E2  4EB9 00001A20            251      JSR         GET_NORMAL_SIZE
+000011E8  B67C 0003                252      CMP         #%11,D3
+000011EC  67C2                     253      BEQ         INVALID                                 * NEG can only have normal size ,01,00,10
+000011EE  43F9 000022D6            254      LEA         NEG_VALUE,A1                            * Print NEG to screen
+000011F4  4EB9 00001916            255      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000011FA  4EB9 000012F4            256      JSR         PRINT_NORMAL_SUFFIX
+00001200  3638 0200                257      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001204  4EB9 00001A4E            258      JSR         CHECK_TYPE_DATA                         * Extract the mode and register
+0000120A  4EB9 0000191E            259      JSR         PRINT_DATA_MODE_SOURCE
+00001210  6100 FF7A                260      BSR         USER_INPUT_ENTER
+00001214  6000 FE28                261      BRA         PARSING_OP_CODE
+00001218  4E75                     262      RTS
+0000121A                           263  
+0000121A                           264  ***
+0000121A                           265  * Print out the NOP instructions with no operands to follow
+0000121A                           266  ***
+0000121A                           267  PRINT_OUT_NOP
+0000121A  43F9 000022B8            268      LEA         NOP_VALUE,A1 * Display the NOP message
+00001220  4EB9 00001916            269      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001226  6100 FF64                270      BSR         USER_INPUT_ENTER
+0000122A  6000 FE12                271      BRA         PARSING_OP_CODE
+0000122E  4E75                     272      RTS
+00001230                           273  
+00001230                           274  ***
+00001230                           275  * Print out the RTS instruction with no operands to follow
+00001230                           276  ***
+00001230                           277  PRINT_OUT_RTS
+00001230  43F9 000022BE            278      LEA         RTS_VALUE,A1
+00001236  4EB9 00001916            279      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+0000123C  6100 FF4E                280      BSR         USER_INPUT_ENTER
+00001240  6000 FDFC                281      BRA         PARSING_OP_CODE
+00001244  4E75                     282      RTS
+00001246                           283  
+00001246                           284  ***
+00001246                           285  * Print out the ORI to SR instruction
+00001246                           286  * Unfinished implementation
+00001246                           287  ***
+00001246                           288  PRINT_OUT_ORI_TO_SR
+00001246  43F9 000022C4            289      LEA         ORI_VALUE,A1
+0000124C  4EB9 00001916            290      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001252  6100 FF38                291      BSR         USER_INPUT_ENTER
+00001256  6000 FDE6                292      BRA         PARSING_OP_CODE
+0000125A  4E75                     293      RTS
+0000125C                           294  
+0000125C                           295  ***
+0000125C                           296  * Print out the JSR instructions with the address to jump to
+0000125C                           297  * This will print out the actual address, not just the displacement
+0000125C                           298  ***
+0000125C                           299  PRINT_OUT_JSR
+0000125C  43F9 000022CA            300      LEA         JSR_VALUE,A1
+00001262  4EB9 00001916            301      JSR         PRINT_TO_SCREEN_ENTIRE_STRING           * Now query what type of data to print out, source or destination
+00001268  4EB9 000019D2            302      JSR         PRINT_EMPTY_SPACE
+0000126E  3638 0200                303      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001272  4EB9 00001A4E            304      JSR         CHECK_TYPE_DATA
+00001278  4EB9 0000191E            305      JSR         PRINT_DATA_MODE_SOURCE                  * Print the M and N of the last 6 bits
+0000127E  6100 FF0C                306      BSR         USER_INPUT_ENTER
+00001282  6000 FDBA                307      BRA         PARSING_OP_CODE
+00001286                           308  
+00001286                           309  ***
+00001286                           310  * Print out the CMPI instruction
+00001286                           311  ***
+00001286                           312  PRINT_OUT_CMPI
+00001286  43F9 000022DC            313      LEA         CMPI_VALUE,A1                           * Print out the literal value
+0000128C  4EB9 00001916            314      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001292  3638 0200                315      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001296  4EB9 00001A4E            316      JSR         CHECK_TYPE_DATA
+0000129C  4EB9 000012F4            317      JSR         PRINT_NORMAL_SUFFIX
+000012A2  4EB9 000019D2            318      JSR         PRINT_EMPTY_SPACE
+000012A8  4EB9 000019DE            319      JSR         PRINT_IMMEDIATE_DATA_SYMBOL
+000012AE  4EB9 00001A20            320      JSR         GET_NORMAL_SIZE                         * Get the size of the operation to know how much byte should we advance forward
+000012B4  E24B                     321      LSR         #1, D3                                  * For cmpi.b and cmpi.w, they all map to absolute short in which print only 4
+000012B6  31C3 0550                322      MOVE.W      D3, THIRD_TEMP_VAR
+000012BA  4EB9 00001A4E            323      JSR         CHECK_TYPE_DATA                         * Now byte and word will be printed 4 space where as long will be printed 5 space
+000012C0  4EB9 00001DAE            324      JSR         REGISTER_MODE_111                       * Print out the immediate value
+000012C6  4EB9 00001972            325      JSR         PRINT_COMMA
+000012CC  4EB9 000019D2            326      JSR         PRINT_EMPTY_SPACE
+000012D2  4EB9 0000191E            327      JSR         PRINT_DATA_MODE_SOURCE
+000012D8  6100 FEB2                328      BSR         USER_INPUT_ENTER
+000012DC  6000 FD60                329      BRA         PARSING_OP_CODE
+000012E0  4E75                     330      RTS
+000012E2                           331  
+000012E2                           332  ***
+000012E2                           333  * Print the suffix that represent size within the opcode
+000012E2                           334  * This is only used for MOVE and MOVEM instructions where the size for byte, word ,long are 01,11,10
+000012E2                           335  ***
+000012E2                           336  PRINT_NOT_NORMAL_SUFFIX
+000012E2  49F9 00001FE4            337      LEA         NORMAL_SIZE_PRINT_JUMP_TABLE,A4
+000012E8  C6FC 0006                338      MULU        #6,D3
+000012EC  4EB4 3000                339      JSR         0(A4,D3)
+000012F0  4243                     340      CLR         D3
+000012F2  4E75                     341      RTS
+000012F4                           342  
+000012F4                           343  ***
+000012F4                           344  * Print the suffix that represent the NORMAL size within the op code
+000012F4                           345  * The normal size are usually found at the first 2 bit at the third nibble
+000012F4                           346  * For byte, word, long, the size are : 00,01,10
+000012F4                           347  ***
+000012F4                           348  PRINT_NORMAL_SUFFIX
+000012F4  3638 0200                349      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000012F8  4EB9 00001A20            350      JSR         GET_NORMAL_SIZE
+000012FE  49F9 00001FE4            351      LEA         NORMAL_SIZE_PRINT_JUMP_TABLE,A4
+00001304  B67C 0003                352      CMP         #%11,D3                                 * For normal size, does not take 11
+00001308  6700 FEA6                353      BEQ         INVALID
+0000130C  C6FC 0006                354      MULU        #6,D3
+00001310  4EB4 3000                355      JSR         0(A4,D3)                                * Print out appropriate suffix
+00001314  4E75                     356      RTS
+00001316                           357  
+00001316                           358  ***
+00001316                           359  * Print out the register number (Xn)
+00001316                           360  * Need to put the register number into THIRD_TEMP_VAR first
+00001316                           361  * Could be the data source or data destination that call this method
+00001316                           362  ***
+00001316                           363  
+00001316                           364  PRINT_REGISTER_NUMBER
+00001316  49F9 00001E76            365      LEA         HEX_CHARACTER_JUMP_TABLE,A4
+0000131C  3638 0550                366      MOVE.W      THIRD_TEMP_VAR,D3
+00001320  C6FC 0006                367      MULU        #6,D3
+00001324  4EB4 3000                368      JSR         0(A4,D3)
+00001328  4278 0550                369      CLR.W       THIRD_TEMP_VAR
+0000132C  4243                     370      CLR.W       D3
+0000132E  4E75                     371      RTS
+00001330                           372  
+00001330                           373  ***
+00001330                           374  * Print out the LEA instruction
+00001330                           375  ***
+00001330                           376  PRINT_OUT_LEA
+00001330  43F9 000022D0            377      LEA         LEA_VALUE,A1
+00001336  4EB9 00001916            378      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+0000133C  4EB9 000019D2            379      JSR         PRINT_EMPTY_SPACE
+00001342  3638 0200                380      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001346  4EB9 00001A4E            381      JSR         CHECK_TYPE_DATA
+0000134C  4EB9 0000191E            382      JSR         PRINT_DATA_MODE_SOURCE
+00001352  4EB9 00001972            383      JSR         PRINT_COMMA
+00001358  4EB9 000019D2            384      JSR         PRINT_EMPTY_SPACE
+0000135E  4EB9 0000197E            385      JSR         PRINT_ADDRESS_REGISTER                  * Already know the LEA can only take use of Address register
+00001364  31F8 0250 0550           386      MOVE.W      DESTINATION_VAR,THIRD_TEMP_VAR          * Store the register number to print
+0000136A  4EB8 1316                387      JSR         PRINT_REGISTER_NUMBER
+0000136E  6100 FE1C                388      BSR         USER_INPUT_ENTER
+00001372  6000 FCCA                389      BRA         PARSING_OP_CODE
+00001376  4E75                     390      RTS
+00001378                           391  
+00001378                           392  ***
+00001378                           393  * Print out the ADDQ instruction
+00001378                           394  * Utilized a helper method because ADDQ and SUBQ are the same
+00001378                           395  ***
+00001378                           396  PRINT_OUT_ADDQ
+00001378  43F9 00002324            397      LEA         ADDQ_VALUE,A1
+0000137E  6000 000C                398      BRA         ADDQ_AND_SUBQ_HELPER
+00001382                           399  
+00001382                           400  ***
+00001382                           401  * Print out the SUBQ instruction
+00001382                           402  * Utilized a helper method because ADDQ and SUBQ are the same
+00001382                           403  ***
+00001382                           404  PRINT_OUT_SUBQ
+00001382  43F9 000022F4            405      LEA         SUBQ_VALUE,A1
+00001388  6000 0002                406      BRA         ADDQ_AND_SUBQ_HELPER
+0000138C                           407  
+0000138C                           408  ***
+0000138C                           409  * Helper method for ADDQ and SUBQ
+0000138C                           410  ***
+0000138C                           411  ADDQ_AND_SUBQ_HELPER
+0000138C  4EB9 00001916            412      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001392  4EB8 12F4                413      JSR         PRINT_NORMAL_SUFFIX
+00001396  4EB9 000019D2            414      JSR         PRINT_EMPTY_SPACE
+0000139C  4EB9 000019DE            415      JSR         PRINT_IMMEDIATE_DATA_SYMBOL
+000013A2  3638 0200                416      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000013A6  4EB9 00001A4E            417      JSR         CHECK_TYPE_DATA
+000013AC  0C78 0000 0250           418      CMP         #0, DESTINATION_VAR                     * In the case of 8, the destination var is 000. But we want to print out 8
+000013B2  6700 0028                419      BEQ         SUBQ_HELPER_FUNCTION                    * If it is the case, then move to another helper to move 8 directly into it
+000013B6  31F8 0250 0550           420      MOVE.W      DESTINATION_VAR,THIRD_TEMP_VAR          * Save the value to print out from print register number
+000013BC  4EB8 1316                421      JSR         PRINT_REGISTER_NUMBER                   * Print out the data from 1-8
+000013C0  4EB9 00001972            422      JSR         PRINT_COMMA
+000013C6  4EB9 000019D2            423      JSR         PRINT_EMPTY_SPACE
+000013CC  4EB9 0000191E            424      JSR         PRINT_DATA_MODE_SOURCE
+000013D2  6100 FDB8                425      BSR         USER_INPUT_ENTER
+000013D6  6000 FC66                426      BRA         PARSING_OP_CODE
+000013DA  4E75                     427      RTS
+000013DC                           428  
+000013DC                           429  ***
+000013DC                           430  * Helper method to print out 8 for ADDQ and SUBQ
+000013DC                           431  ***
+000013DC                           432  SUBQ_HELPER_FUNCTION                                    * Single function that exist to help with printing oout the data in SUBQ
+000013DC  31FC 0008 0550           433      MOVE.W      #8, THIRD_TEMP_VAR
+000013E2  4EB8 1316                434      JSR         PRINT_REGISTER_NUMBER
+000013E6  4EB9 00001972            435      JSR         PRINT_COMMA
+000013EC  4EB9 000019D2            436      JSR         PRINT_EMPTY_SPACE
+000013F2  4EB9 0000191E            437      JSR         PRINT_DATA_MODE_SOURCE
+000013F8  6100 FD92                438      BSR         USER_INPUT_ENTER
+000013FC  6000 FC40                439      BRA         PARSING_OP_CODE
+00001400  4E75                     440      RTS
+00001402                           441  
+00001402                           442  ***
+00001402                           443  * Print out the DIVS instruction
+00001402                           444  ***
+00001402                           445  PRINT_OUT_DIVS
+00001402  43F9 000022FA            446      LEA         DIVS_VALUE,A1
+00001408  4EB9 00001916            447      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+0000140E  4EB9 0000200C            448      JSR         PRINT_NORMAL_WORD_SUFFIX                * DIVS can only take word suffix
+00001414  4EB9 000019D2            449      JSR         PRINT_EMPTY_SPACE
+0000141A  4EB9 0000191E            450      JSR         PRINT_DATA_MODE_SOURCE
+00001420  4EB9 00001972            451      JSR         PRINT_COMMA
+00001426  4EB9 000019D2            452      JSR         PRINT_EMPTY_SPACE
+0000142C  4EB9 0000198A            453      JSR         PRINT_DATA_REGISTER                     * DIVS can only use Data register
+00001432  31F8 0250 0550           454      MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR         * Store the register number Dn to print out
+00001438  4EB8 1316                455      JSR         PRINT_REGISTER_NUMBER
+0000143C  6100 FD4E                456      BSR         USER_INPUT_ENTER
+00001440  6000 FBFC                457      BRA         PARSING_OP_CODE
+00001444  4E75                     458      RTS
+00001446                           459  
+00001446                           460  ***
+00001446                           461  * Print out the MULS instruction
+00001446                           462  ***
+00001446                           463  PRINT_OUT_MULS
+00001446  43F9 0000230C            464      LEA         MULS_VALUE,A1
+0000144C  6000 0002                465      BRA         MULS_AND_MULU_HELPER
+00001450                           466  
+00001450                           467  ***
+00001450                           468  * Helper method for MULS and MULU instruction
+00001450                           469  ***
+00001450                           470  MULS_AND_MULU_HELPER
+00001450  4EB9 00001916            471      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001456  4EB9 0000200C            472      JSR         PRINT_NORMAL_WORD_SUFFIX
+0000145C  4EB9 000019D2            473      JSR         PRINT_EMPTY_SPACE
+00001462  3638 0200                474      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001466  4EB9 00001A4E            475      JSR         CHECK_TYPE_DATA
+0000146C  31FC 0001 0300           476      MOVE.W      #%01, DESTINATION_MODE                  * Change the size of to word to print out
+00001472  4EB9 0000191E            477      JSR         PRINT_DATA_MODE_SOURCE
+00001478  4EB9 00001972            478      JSR         PRINT_COMMA
+0000147E  4EB9 000019D2            479      JSR         PRINT_EMPTY_SPACE
+00001484  4EB9 0000198A            480      JSR         PRINT_DATA_REGISTER
+0000148A  31F8 0250 0550           481      MOVE.W      DESTINATION_VAR,THIRD_TEMP_VAR          * Save the register number
+00001490  4EB8 1316                482      JSR         PRINT_REGISTER_NUMBER
+00001494  6100 FCF6                483      BSR         USER_INPUT_ENTER
+00001498  6000 FBA4                484      BRA         PARSING_OP_CODE
+0000149C  4E75                     485      RTS
+0000149E                           486  
+0000149E                           487  ***
+0000149E                           488  * Print out the MULU instruction
+0000149E                           489  * Utilized a helper method
+0000149E                           490  ***
+0000149E                           491  PRINT_OUT_MULU
+0000149E  43F9 00002312            492      LEA         MULU_VALUE,A1
+000014A4  60AA                     493      BRA         MULS_AND_MULU_HELPER
+000014A6                           494  
+000014A6                           495  ***
+000014A6                           496  * Print out the CMP instructions
+000014A6                           497  ***
+000014A6                           498  PRINT_OUT_CMP
+000014A6  43F9 000022E2            499      LEA         CMP_VALUE,A1
+000014AC  4EB9 00001916            500      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000014B2  4EB8 12F4                501      JSR         PRINT_NORMAL_SUFFIX
+000014B6  4EB9 000019D2            502      JSR         PRINT_EMPTY_SPACE
+000014BC  3638 0200                503      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000014C0  4EB9 00001A4E            504      JSR         CHECK_TYPE_DATA
+000014C6  4EB9 0000191E            505      JSR         PRINT_DATA_MODE_SOURCE
+000014CC  4EB9 00001972            506      JSR         PRINT_COMMA
+000014D2  4EB9 000019D2            507      JSR         PRINT_EMPTY_SPACE
+000014D8  4EB9 0000198A            508      JSR         PRINT_DATA_REGISTER                     * CMP can only use Data register
+000014DE  31F8 0250 0550           509      MOVE.W      DESTINATION_VAR,THIRD_TEMP_VAR
+000014E4  4EB8 1316                510      JSR         PRINT_REGISTER_NUMBER
+000014E8  6100 FCA2                511      BSR         USER_INPUT_ENTER
+000014EC  6000 FB50                512      BRA         PARSING_OP_CODE
+000014F0  4E75                     513      RTS
+000014F2                           514  
+000014F2                           515  ***
+000014F2                           516  * Print out the MOVEQ instructions
+000014F2                           517  ***
+000014F2                           518  PRINT_OUT_MOVEQ
+000014F2  43F9 00002356            519      LEA         MOVEQ_VALUE,A1
+000014F8  4EB9 00001916            520      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000014FE  4EB9 0000201C            521      JSR         PRINT_NORMAL_LONG_SUFFIX                * Can only use long suffix
+00001504  3238 0200                522      MOVE.W      TEMP_CURRENT_4_NIBBLES,D1               * Save the current opcode
+00001508  4EB9 000019DE            523      JSR         PRINT_IMMEDIATE_DATA_SYMBOL
+0000150E  4EB9 000019C6            524      JSR         PRINT_HEX_SYMBOL
+00001514  3638 0200                525      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001518  E14B                     526      LSL         #8,D3
+0000151A  E04B                     527      LSR         #8,D3
+0000151C  31C3 0200                528      MOVE.W      D3, TEMP_CURRENT_4_NIBBLES              * Get the last 2 nibbles that represents that data to print out
+00001520  4EB8 1128                529      JSR         CONVERT_HEX_TO_ASCII                    * Print the 8 bit data field
+00001524  31C1 0200                530      MOVE.W      D1, TEMP_CURRENT_4_NIBBLES
+00001528  3638 0200                531      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3               * Restore the data
+0000152C  4EB9 00001972            532      JSR         PRINT_COMMA
+00001532  4EB9 000019D2            533      JSR         PRINT_EMPTY_SPACE
+00001538  3638 0200                534      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+0000153C  4EB9 00001A4E            535      JSR         CHECK_TYPE_DATA
+00001542  4EB9 0000198A            536      JSR         PRINT_DATA_REGISTER                     * Can only use Data Register
+00001548  31F8 0250 0550           537      MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR         * Store the register number to print out
+0000154E  4EB8 1316                538      JSR         PRINT_REGISTER_NUMBER
+00001552  6100 FC38                539      BSR         USER_INPUT_ENTER
+00001556  6000 FAE6                540      BRA         PARSING_OP_CODE
+0000155A                           541  
+0000155A                           542  ***
+0000155A                           543  * Print out SUBA instruction
+0000155A                           544  * Utilied a helper method
+0000155A                           545  ***
+0000155A                           546  PRINT_OUT_SUBA
+0000155A  43F9 000022EE            547      LEA         SUBA_VALUE,A1
+00001560  6000 000C                548      BRA         SUBA_AND_ADDA_HELPER
+00001564                           549  
+00001564                           550  ***
+00001564                           551  * Print out ADDA instrucion
+00001564                           552  * Utilized a helper method
+00001564                           553  ***
+00001564                           554  PRINT_OUT_ADDA
+00001564  43F9 0000231E            555      LEA         ADDA_VALUE,A1
+0000156A  6000 0002                556      BRA         SUBA_AND_ADDA_HELPER
+0000156E                           557  
+0000156E                           558  ***
+0000156E                           559  * Helper method for ADDA ans SUBA
+0000156E                           560  ***
+0000156E                           561  SUBA_AND_ADDA_HELPER
+0000156E  4EB9 00001916            562      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001574  3638 0200                563      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001578  4EB9 00001A4E            564      JSR         CHECK_TYPE_DATA
+0000157E  4EB9 000019F0            565      JSR         GET_THE_SECOND_NIBBLE
+00001584  E14B                     566      LSL         #8,D3                                   * Get the special one bit size of ADDA and SUBA
+00001586  EF4B                     567      LSL         #7,D3
+00001588  EE4B                     568      LSR         #7,D3
+0000158A  E04B                     569      LSR         #8,D3
+0000158C  5243                     570      ADD         #1,D3                                   * 0 is word and 1 is long. Add 1 will be 01 and 10, word and long for normal size
+0000158E  4EB8 12E2                571      JSR         PRINT_NOT_NORMAL_SUFFIX                 * Now print .W or .L only
+00001592  4EB9 0000191E            572      JSR         PRINT_DATA_MODE_SOURCE
+00001598  4EB9 00001972            573      JSR         PRINT_COMMA
+0000159E  4EB9 000019D2            574      JSR         PRINT_EMPTY_SPACE
+000015A4  4EB9 0000197E            575      JSR         PRINT_ADDRESS_REGISTER
+000015AA  31F8 0250 0550           576      MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR         * Save the variable to print out the number of address register
+000015B0  4EB8 1316                577      JSR         PRINT_REGISTER_NUMBER
+000015B4  6100 FBD6                578      BSR         USER_INPUT_ENTER
+000015B8  6000 FA84                579      BRA         PARSING_OP_CODE
+000015BC  4E75                     580      RTS
+000015BE                           581  
+000015BE                           582  ***
+000015BE                           583  * Print out the OR instruction
+000015BE                           584  * Utilized helper method of ADD and SUB
+000015BE                           585  ***
+000015BE                           586  PRINT_OUT_OR
+000015BE  43F9 00002344            587      LEA         OR_VALUE,A1
+000015C4  6000 0016                588      BRA         ADD_AND_SUB_HELPER                      * Take advantage of the similar structure like add and sub
+000015C8                           589  
+000015C8                           590  ***
+000015C8                           591  * Print out the ADD instruction
+000015C8                           592  * Utilized a helper method
+000015C8                           593  ***
+000015C8                           594  PRINT_OUT_ADD           * Function similar like SUB
+000015C8  43F9 00002318            595      LEA         ADD_VALUE,A1
+000015CE  6000 000C                596      BRA         ADD_AND_SUB_HELPER
+000015D2                           597  
+000015D2                           598  ***
+000015D2                           599  * Print out the SUB instructions
+000015D2                           600  * Utilized a helper method
+000015D2                           601  ***
+000015D2                           602  PRINT_OUT_SUB
+000015D2  43F9 000022E8            603      LEA         SUB_VALUE,A1
+000015D8  6000 0002                604      BRA         ADD_AND_SUB_HELPER
+000015DC                           605  
+000015DC                           606  
+000015DC                           607  ***
+000015DC                           608  * Helper method for SUB and ADD
+000015DC                           609  * The SUB function is odd is that the Dn is always in front
+000015DC                           610  * So to distinguish it, we need to check the source mode and compare wit 000
+000015DC                           611  * Only time where the source and dstiantion are in correct position
+000015DC                           612  * This method is when both are data register
+000015DC                           613  ***
+000015DC                           614  ADD_AND_SUB_HELPER
+000015DC  4EB9 00001916            615      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000015E2  4EB8 12F4                616      JSR         PRINT_NORMAL_SUFFIX
+000015E6  4EB9 000019D2            617      JSR         PRINT_EMPTY_SPACE
+000015EC  3638 0200                618      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000015F0  4EB9 00001A4E            619      JSR         CHECK_TYPE_DATA
+000015F6  0C78 0000 0350           620      CMP         #0, SOURCE_MODE
+000015FC  6600 002E                621      BNE         SUB_HELPER_FUNCTION                         * Utilize the not normal approach
+00001600  4EB9 0000191E            622      JSR         PRINT_DATA_MODE_SOURCE
+00001606  4EB9 00001972            623      JSR         PRINT_COMMA
+0000160C  4EB9 000019D2            624      JSR         PRINT_EMPTY_SPACE
+00001612  4EB9 0000198A            625      JSR         PRINT_DATA_REGISTER
+00001618  31F8 0250 0550           626      MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR
+0000161E  4EB8 1316                627      JSR         PRINT_REGISTER_NUMBER
+00001622  6100 FB68                628      BSR         USER_INPUT_ENTER
+00001626  6000 FA16                629      BRA         PARSING_OP_CODE
+0000162A  4E75                     630      RTS
+0000162C                           631  
+0000162C                           632  ***
+0000162C                           633  * Helper for the helper method of ADD and SUB
+0000162C                           634  * Used to handle cases with data register
+0000162C                           635  * For whatever the data register is always the first 3 bit of the second nibble
+0000162C                           636  * Even though it can either be in the source or destination when write it
+0000162C                           637  * This method is when they are not both data register
+0000162C                           638  ***
+0000162C                           639  SUB_HELPER_FUNCTION
+0000162C  3638 0200                640      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3                   * Need to swap places to print out
+00001630  4EB9 00001A4E            641      JSR         CHECK_TYPE_DATA
+00001636  3638 0250                642      MOVE.W      DESTINATION_VAR,D3
+0000163A  31F8 0400 0250           643      MOVE.W      SOURCE_VAR,DESTINATION_VAR
+00001640  31C3 0400                644      MOVE.W      D3,SOURCE_VAR
+00001644  3638 0300                645      MOVE.W      DESTINATION_MODE,D3
+00001648  31F8 0350 0300           646      MOVE.W      SOURCE_MODE,DESTINATION_MODE
+0000164E  31C3 0350                647      MOVE.W      D3,SOURCE_MODE
+00001652  3638 0350                648      MOVE.W      SOURCE_MODE, D3
+00001656  31F8 0400 0550           649      MOVE.W      SOURCE_VAR, THIRD_TEMP_VAR                  * Save the variable to print out from register
+0000165C  E44B                     650      LSR         #2,D3
+0000165E  B67C 0000                651      CMP         #0,D3                                       * Check direction to know which order we should be printing
+00001662  6700 0024                652      BEQ         SUB_HELPER_REGISTER_TO_MEM
+00001666  4EB9 00001D6C            653      JSR         REGISTER_MODE_000                           * Need to find a way to switch the places
+0000166C  4EB9 00001972            654      JSR         PRINT_COMMA
+00001672  4EB9 000019D2            655      JSR         PRINT_EMPTY_SPACE
+00001678  4EB9 00001938            656      JSR         PRINT_DATA_MODE_DESTINATION
+0000167E  6100 FB0C                657      BSR         USER_INPUT_ENTER
+00001682  6000 F9BA                658      BRA         PARSING_OP_CODE
+00001686  4E75                     659      RTS
+00001688                           660  
+00001688                           661  ***
+00001688                           662  * Helper method to help with printing from register to memory
+00001688                           663  ***
+00001688                           664  SUB_HELPER_REGISTER_TO_MEM
+00001688  31F8 0250 0550           665      MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR
+0000168E  4EB9 00001938            666      JSR         PRINT_DATA_MODE_DESTINATION
+00001694  4EB9 00001972            667      JSR         PRINT_COMMA
+0000169A  4EB9 000019D2            668      JSR         PRINT_EMPTY_SPACE
+000016A0  31F8 0400 0550           669      MOVE.W      SOURCE_VAR, THIRD_TEMP_VAR
+000016A6  4EB9 00001D6C            670      JSR         REGISTER_MODE_000
+000016AC  6100 FADE                671      BSR         USER_INPUT_ENTER
+000016B0  6000 F98C                672      BRA         PARSING_OP_CODE
+000016B4  4E75                     673      RTS
+000016B6                           674  
+000016B6                           675  ***
+000016B6                           676  * Print out the BRA instruction
+000016B6                           677  * Current limitation: Only can print out branch to a word address (4bytes).No support for 8 bytes
+000016B6                           678  ***
+000016B6                           679  PRINT_OUT_BRA
+000016B6  43F9 00002300            680      LEA         BRA_VALUE,A1
+000016BC  4EB9 00001916            681      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000016C2  4EB9 000019D2            682      JSR         PRINT_EMPTY_SPACE
+000016C8  4EB9 000019C6            683      JSR         PRINT_HEX_SYMBOL
+000016CE  380A                     684      MOVE.W      A2,D4                                       * Save the current address we are at
+000016D0  4EB9 00001A0A            685      JSR         GET_NEXT_FOUR_NIBBLE                        * Get the displacement we are suppose to branch to
+000016D6  D843                     686      ADD         D3,D4                                       * Current address + displacement => address we are suppose to jump to
+000016D8  31C4 0200                687      MOVE.W      D4, TEMP_CURRENT_4_NIBBLES                  * Prepare the address to print out in hex
+000016DC  4EB8 1128                688      JSR         CONVERT_HEX_TO_ASCII
+000016E0  6100 FAAA                689      BSR         USER_INPUT_ENTER
+000016E4  6000 F958                690      BRA         PARSING_OP_CODE
+000016E8                           691  
+000016E8                           692  ***
+000016E8                           693  * Print out the BSR instruction
+000016E8                           694  * limitation: Same like BRA
+000016E8                           695  ***
+000016E8                           696  PRINT_OUT_BSR
+000016E8  43F9 00002306            697      LEA         BSR_VALUE,A1
+000016EE  4EB9 00001916            698      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000016F4  4EB9 000019D2            699      JSR         PRINT_EMPTY_SPACE
+000016FA  4EB9 000019C6            700      JSR         PRINT_HEX_SYMBOL
+00001700  380A                     701      MOVE.W      A2,D4
+00001702  4EB9 00001A0A            702      JSR         GET_NEXT_FOUR_NIBBLE
+00001708  D843                     703      ADD         D3,D4
+0000170A  31C4 0200                704      MOVE.W      D4,TEMP_CURRENT_4_NIBBLES
+0000170E  4EB8 1128                705      JSR         CONVERT_HEX_TO_ASCII
+00001712  6100 FA78                706      BSR         USER_INPUT_ENTER
+00001716  6000 F926                707      BRA         PARSING_OP_CODE
+0000171A                           708  
+0000171A                           709  ***
+0000171A                           710  * Print out the appropriate Bcc instruction using a jump table
+0000171A                           711  ***
+0000171A                           712  PRINT_OUT_Bcc
+0000171A  43F9 0000240A            713      LEA         B,A1
+00001720  4EB9 00001916            714      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001726  4DF9 00002032            715      LEA         CONDITION_JUMP_TABLE,A6                     * Load the jump table to know which condition code to print
+0000172C  3638 0200                716      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001730  4EB9 000019F0            717      JSR         GET_THE_SECOND_NIBBLE
+00001736  C6FC 0006                718      MULU        #6,D3
+0000173A  4EB6 3000                719      JSR         0(A6,D3)                                    * Now print out the suffix of B
+0000173E  4EB9 000019D2            720      JSR         PRINT_EMPTY_SPACE
+00001744  4EB9 000019C6            721      JSR         PRINT_HEX_SYMBOL
+0000174A  380A                     722      MOVE.W      A2,D4                                       * Print out the address
+0000174C  4EB9 00001A0A            723      JSR         GET_NEXT_FOUR_NIBBLE
+00001752  D843                     724      ADD         D3,D4
+00001754  31C4 0200                725      MOVE.W      D4,TEMP_CURRENT_4_NIBBLES
+00001758  4EB8 1128                726      JSR         CONVERT_HEX_TO_ASCII
+0000175C  6100 FA2E                727      BSR         USER_INPUT_ENTER
+00001760  6000 F8DC                728      BRA         PARSING_OP_CODE
+00001764                           729  
+00001764                           730  ***
+00001764                           731  * Logical Shift instruction with single operand memory <ea>
+00001764                           732  ***
+00001764                           733  PRINT_OUT_LOGICAL_SHIFT_MEM
+00001764  43F9 0000232E            734      LEA         LS_VALUE,A1
+0000176A  4EB9 00001780            735      JSR         ASD_LSD_ROD_SHIFT_HELPER
+00001770  4E75                     736      RTS
+00001772                           737  
+00001772                           738  ***
+00001772                           739  * Arithmeic shift instruction with single operand memory <ea>
+00001772                           740  ***
+00001772                           741  PRINT_OUT_ARITH_SHIFT_MEM
+00001772  43F9 0000232A            742      LEA         AS_VALUE,A1
+00001778  4EB9 00001780            743      JSR         ASD_LSD_ROD_SHIFT_HELPER
+0000177E  4E75                     744      RTS
+00001780                           745  
+00001780                           746  ***
+00001780                           747  * Helper method for ASd, LSd, ROd
+00001780                           748  ***
+00001780                           749  ASD_LSD_ROD_SHIFT_HELPER
+00001780  4EB9 00001916            750      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001786  4DF9 0000217A            751      LEA         RIGHT_OR_LEFT_JUMP_TABLE,A6                 * Print the direction, left or right
+0000178C  3638 0200                752      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001790  4EB9 00001A4E            753      JSR         CHECK_TYPE_DATA
+00001796  4EB9 000019F0            754      JSR         GET_THE_SECOND_NIBBLE
+0000179C  E14B                     755      LSL         #8,D3
+0000179E  EF4B                     756      LSL         #7,D3
+000017A0  EE4B                     757      LSR         #7,D3
+000017A2  E04B                     758      LSR         #8,D3
+000017A4  C6FC 0006                759      MULU        #6,D3
+000017A8  4EB6 3000                760      JSR         0(A6,D3)                                    * Print out left or right
+000017AC  4EB9 0000200C            761      JSR         PRINT_NORMAL_WORD_SUFFIX
+000017B2  31F8 0400 0550           762      MOVE.W      SOURCE_VAR, THIRD_TEMP_VAR                  * Save the register number in case for print OUT
+000017B8  4EB9 0000191E            763      JSR         PRINT_DATA_MODE_SOURCE
+000017BE  6100 F9CC                764      BSR         USER_INPUT_ENTER
+000017C2  6000 F87A                765      BRA         PARSING_OP_CODE
+000017C6  4E75                     766      RTS
+000017C8                           767  
+000017C8                           768  ***
+000017C8                           769  * Print out the ROd instruction with operand memory <ea>
+000017C8                           770  ***
+000017C8                           771  PRINT_OUT_ROTATE_MEM
+000017C8  43F9 00002332            772      LEA         RO_VALUE,A1
+000017CE  4EB8 1780                773      JSR         ASD_LSD_ROD_SHIFT_HELPER
+000017D2  4E75                     774      RTS
+000017D4                           775  
+000017D4                           776  ***
+000017D4                           777  * print out the ASd and LSd with other cases
+000017D4                           778  * ASL Dx, Dy for example
+000017D4                           779  * ASL #<data>, Dy
+000017D4                           780  ***
+000017D4                           781  PRINT_OUT_ASD_OR_LSD                                * For other ASd and LSd, the first  bit of the last nibble can be used to differentiate them
+000017D4  3638 0200                782      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000017D8  4EB9 00001A00            783      JSR         GET_THE_FOURTH_NIBBLE
+000017DE  E64B                     784      LSR         #3,D3
+000017E0  B67C 0000                785      CMP         #0,D3
+000017E4  6700 0008                786      BEQ         PRINT_OUT_ASD                       * First bit is 0 for ASD
+000017E8  6000 0012                787      BRA         PRINT_OUT_LSD                       * 1 for LSD
+000017EC  4E75                     788      RTS
+000017EE                           789  
+000017EE                           790  ***
+000017EE                           791  * Print out the ASD instruction with other cases
+000017EE                           792  * ASL Dx, Dy
+000017EE                           793  * ASL #<data>, Dy
+000017EE                           794  ***
+000017EE                           795  PRINT_OUT_ASD
+000017EE  43F9 0000232A            796      LEA         AS_VALUE,A1
+000017F4  4EB9 0000182C            797      JSR         ASD_LSD_ROD_HELPER_FUNCTION
+000017FA  4E75                     798      RTS
+000017FC                           799  
+000017FC                           800  ***
+000017FC                           801  * Print out the LSd instruction with other cases
+000017FC                           802  * LSR Dx, Dy
+000017FC                           803  * LSR #<data>, Dy
+000017FC                           804  ***
+000017FC                           805  PRINT_OUT_LSD
+000017FC  43F9 0000232E            806      LEA         LS_VALUE,A1
+00001802  4EB9 0000182C            807      JSR         ASD_LSD_ROD_HELPER_FUNCTION
+00001808  4E75                     808      RTS
+0000180A                           809  
+0000180A                           810  ***
+0000180A                           811  * Print out the ROd instruction with other cases
+0000180A                           812  * ROL Dx, Dy
+0000180A                           813  * ROL #<data>, Dy
+0000180A                           814  ***
+0000180A                           815  PRINT_OUT_ROD
+0000180A  3638 0200                816      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+0000180E  4EB9 00001A00            817      JSR         GET_THE_FOURTH_NIBBLE
+00001814  E64B                     818      LSR         #3,D3
+00001816  B67C 0001                819      CMP         #1,D3
+0000181A  6600 F994                820      BNE         INVALID                                     * ROD ibly accept 1 as the first bit in the fourth nibbles
+0000181E  43F9 00002332            821      LEA         RO_VALUE,A1
+00001824  4EB9 0000182C            822      JSR         ASD_LSD_ROD_HELPER_FUNCTION
+0000182A  4E75                     823      RTS
+0000182C                           824  
+0000182C                           825  ***
+0000182C                           826  * ASd, LSd, ROd instruction with other cases with 2 operands source and destionation
+0000182C                           827  ***
+0000182C                           828  ASD_LSD_ROD_HELPER_FUNCTION   *
+0000182C  4EB9 00001916            829      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001832  4DF9 0000217A            830      LEA         RIGHT_OR_LEFT_JUMP_TABLE,A6                 * Print the direction, left or right
+00001838  3638 0200                831      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+0000183C  4EB9 00001A4E            832      JSR         CHECK_TYPE_DATA
+00001842  4EB9 000019F0            833      JSR         GET_THE_SECOND_NIBBLE
+00001848  E14B                     834      LSL         #8,D3
+0000184A  EF4B                     835      LSL         #7,D3
+0000184C  E04B                     836      LSR         #8,D3
+0000184E  EE4B                     837      LSR         #7,D3
+00001850  C6FC 0006                838      MULU        #6,D3
+00001854  4EB6 3000                839      JSR         0(A6,D3)                                    * Print out left or right
+00001858  3638 0200                840      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+0000185C  4EB8 12F4                841      JSR         PRINT_NORMAL_SUFFIX                         * Print out .B, .W or .L
+00001860  3638 0200                842      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3                   * Now we need to determine if its is immediate or register rotation
+00001864  4EB9 000019F8            843      JSR         GET_THE_THIRD_NIBBLE
+0000186A  E14B                     844      LSL         #8,D3
+0000186C  ED4B                     845      LSL         #6,D3
+0000186E  E04B                     846      LSR         #8,D3
+00001870  EE4B                     847      LSR         #7,D3                                       * Now the third bit will be at the last position
+00001872  4DF9 0000219E            848      LEA         IMMEDIATE_OR_REGISTER_JUMP_TABLE,A6
+00001878  C6FC 0006                849      MULU        #6,D3
+0000187C  4EB6 3000                850      JSR         0(A6,D3)
+00001880  4EB9 0000198A            851      JSR         PRINT_DATA_REGISTER
+00001886  3638 0200                852      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+0000188A  4EB9 00001A4E            853      JSR         CHECK_TYPE_DATA
+00001890  31F8 0400 0550           854      MOVE.W      SOURCE_VAR,THIRD_TEMP_VAR                   * Save the register number to print out
+00001896  4EB8 1316                855      JSR         PRINT_REGISTER_NUMBER
+0000189A  6100 F8F0                856      BSR         USER_INPUT_ENTER
+0000189E  6000 F79E                857      BRA         PARSING_OP_CODE
+000018A2  4E75                     858      RTS
+000018A4                           859  
+000018A4                           860  ***
+000018A4                           861  *  Decide whether to print move or move a based the 3 bit at the destination mode
+000018A4                           862  ***
+000018A4                           863  MOVE_OPCODE_HELPER
+000018A4  3638 0200                864      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000018A8  4EB9 00001A4E            865      JSR         CHECK_TYPE_DATA
+000018AE  0C78 0001 0300           866      CMP         #%001, DESTINATION_MODE
+000018B4  6700 0008                867      BEQ         PRINT_OUT_MOVEA
+000018B8  6000 0010                868      BRA         PRINT_OUT_MOVE
+000018BC  4E75                     869      RTS
+000018BE                           870  
+000018BE                           871  ***
+000018BE                           872  * Print out MOVEA
+000018BE                           873  * UTilized a helper method
+000018BE                           874  ***
+000018BE                           875  PRINT_OUT_MOVEA
+000018BE  43F9 00002348            876      LEA         MOVEA_VALUE,A1
+000018C4  4EB9 000018D6            877      JSR         MOVE_SECOND_OPCODE_HELPER
+000018CA                           878  
+000018CA                           879  ***
+000018CA                           880  * Print out MOVE
+000018CA                           881  * Utlized a helper method
+000018CA                           882  ***
+000018CA                           883  PRINT_OUT_MOVE
+000018CA  43F9 00002350            884      LEA         MOVE_VALUE,A1
+000018D0  4EB9 000018D6            885      JSR         MOVE_SECOND_OPCODE_HELPER
+000018D6                           886  
+000018D6                           887  ***
+000018D6                           888  * Helper method for MOVE and MOVEA
+000018D6                           889  ***
+000018D6                           890  MOVE_SECOND_OPCODE_HELPER
+000018D6  4EB9 00001916            891      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000018DC  4DF9 00001F96            892      LEA         MOVE_SIZE_PRINT_JUMP_TABLE,A6                   * Special size for move instruction
+000018E2  3638 0200                893      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000018E6  4EB9 000019EA            894      JSR         GET_THE_FIRST_NIBBLE
+000018EC  C6FC 0006                895      MULU        #6,D3
+000018F0  4EB6 3000                896      JSR         0(A6,D3)
+000018F4  4EB9 0000191E            897      JSR         PRINT_DATA_MODE_SOURCE
+000018FA  4EB9 00001972            898      JSR         PRINT_COMMA
+00001900  4EB9 000019D2            899      JSR         PRINT_EMPTY_SPACE
+00001906  4EB9 00001938            900      JSR         PRINT_DATA_MODE_DESTINATION
+0000190C  6100 F87E                901      BSR         USER_INPUT_ENTER
+00001910  6000 F72C                902      BRA         PARSING_OP_CODE
+00001914  4E75                     903      RTS
+00001916                           904  
+00001916                           905  ***
+00001916                           906  * Print whatever is stored in A1
+00001916                           907  ***
+00001916                           908  PRINT_TO_SCREEN_ENTIRE_STRING
+00001916  103C 000E                909      MOVE.B      #14,D0
+0000191A  4E4F                     910      TRAP        #15
+0000191C  4E75                     911      RTS
+0000191E                           912  
+0000191E                           913  ***
+0000191E                           914  * Print the data containeds at the last 6 bit of op code
+0000191E                           915  * Destionation var - destionation mode- source mode - source var
+0000191E                           916  ***
+0000191E                           917  PRINT_DATA_MODE_SOURCE         * Depnding on the mode, will print out appropriate data mode: Dn,An,(An),...
+0000191E  4DF9 00001D3C            918      LEA         REGISTER_MODE_JUMP_TABLE,A6
+00001924  31F8 0400 0550           919      MOVE.W      SOURCE_VAR, THIRD_TEMP_VAR
+0000192A  3638 0350                920      MOVE        SOURCE_MODE,D3
+0000192E  C6FC 0006                921      MULU        #6,D3
+00001932  4EB6 3000                922      JSR         0(A6,D3)       * Let's see what mode is this source mode
+00001936  4E75                     923      RTS
+00001938                           924  ***
+00001938                           925  * Print the data contains in the 12-7 bit of op code
+00001938                           926  * Destionation var - destionation mode - source mode - source var
+00001938                           927  ***
+00001938                           928  PRINT_DATA_MODE_DESTINATION
+00001938  4DF9 00001D3C            929      LEA         REGISTER_MODE_JUMP_TABLE,A6
+0000193E  31F8 0250 0550           930      MOVE.W      DESTINATION_VAR, THIRD_TEMP_VAR             * Determine the Xn to print
+00001944  3638 0300                931      MOVE.W      DESTINATION_MODE,D3
+00001948  C6FC 0006                932      MULU        #6,D3
+0000194C  4EB6 3000                933      JSR         0(A6,D3)
+00001950  4E75                     934      RTS
+00001952                           935  
+00001952                           936  ***
+00001952                           937  * Print out the address in which we are executing the disassembli
+00001952                           938  * Should print out 00XX YYYY as the address location
+00001952                           939  ***
+00001952                           940  PRINT_ADDRESS_LOCATION
+00001952  2A0A                     941      MOVE.L      A2,D5 * Save the address we are at
+00001954  E04D                     942      LSR         #8,D5                                       * Shift 4 bytes left most to print out
+00001956  E04D                     943      LSR         #8,D5
+00001958  31C5 0200                944      MOVE.W      D5,TEMP_CURRENT_4_NIBBLES                   * Get the entire long address
+0000195C  4EB8 1128                945      JSR         CONVERT_HEX_TO_ASCII
+00001960  3A0A                     946      MOVE.W      A2,D5
+00001962  31C5 0200                947      MOVE.W      D5,TEMP_CURRENT_4_NIBBLES
+00001966  4EB8 1128                948      JSR         CONVERT_HEX_TO_ASCII
+0000196A  4EB9 000019D2            949      JSR         PRINT_EMPTY_SPACE
+00001970  4E75                     950      RTS
+00001972                           951  
+00001972                           952  ***
+00001972                           953  * Print ','
+00001972                           954  ***
+00001972                           955  PRINT_COMMA
+00001972  43F9 000023BE            956      LEA         COMMA,A1
+00001978  4EB8 1916                957      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+0000197C  4E75                     958      RTS
+0000197E                           959  
+0000197E                           960  ***
+0000197E                           961  * Print 'A'
+0000197E                           962  ***
+0000197E                           963  PRINT_ADDRESS_REGISTER
+0000197E  43F9 000023BA            964      LEA         ADDRESS_REGISTER,A1
+00001984  4EB8 1916                965      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001988  4E75                     966      RTS
+0000198A                           967  
+0000198A                           968  ***
+0000198A                           969  * Print 'D'
+0000198A                           970  ***
+0000198A                           971  PRINT_DATA_REGISTER
+0000198A  43F9 000023B6            972      LEA         DATA_REGISTER,A1
+00001990  4EB8 1916                973      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001994  4E75                     974      RTS
+00001996                           975  
+00001996                           976  ***
+00001996                           977  * Print '('
+00001996                           978  ***
+00001996                           979  PRINT_OPEN_BRACKET
+00001996  43F9 000023A6            980      LEA         OPENING_BRACKET,A1
+0000199C  4EB8 1916                981      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019A0  4E75                     982      RTS
+000019A2                           983  
+000019A2                           984  ***
+000019A2                           985  * Print ')'
+000019A2                           986  ***
+000019A2                           987  PRINT_CLOSE_BRACKET
+000019A2  43F9 000023AA            988      LEA         CLOSING_BRACKET,A1
+000019A8  4EB8 1916                989      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019AC  4E75                     990      RTS
+000019AE                           991  
+000019AE                           992  ***
+000019AE                           993  * Print '+'
+000019AE                           994  ***
+000019AE                           995  PRINT_PLUS_SIGN
+000019AE  43F9 000023AE            996      LEA         PLUS_SIGN,A1
+000019B4  4EB8 1916                997      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019B8  4E75                     998      RTS
+000019BA                           999  
+000019BA                          1000  ***
+000019BA                          1001  * Print '-'
+000019BA                          1002  ***
+000019BA                          1003  PRINT_MINUS_SIGN
+000019BA  43F9 000023B2           1004      LEA         MINUS_SIGN,A1
+000019C0  4EB8 1916               1005      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019C4  4E75                    1006      RTS
+000019C6                          1007  
+000019C6                          1008  ***
+000019C6                          1009  * print '$'
+000019C6                          1010  ***
+000019C6                          1011  PRINT_HEX_SYMBOL
+000019C6  43F9 000023CA           1012      LEA         HEX_SYMBOL,A1
+000019CC  4EB8 1916               1013      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019D0  4E75                    1014      RTS
+000019D2                          1015  
+000019D2                          1016  ***
+000019D2                          1017  * Print ' '
+000019D2                          1018  ***
+000019D2                          1019  PRINT_EMPTY_SPACE
+000019D2  43F9 000023C2           1020      LEA         SPACE,A1
+000019D8  4EB8 1916               1021      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019DC  4E75                    1022      RTS
+000019DE                          1023  
+000019DE                          1024  ***
+000019DE                          1025  * Print '#'
+000019DE                          1026  ***
+000019DE                          1027  PRINT_IMMEDIATE_DATA_SYMBOL
+000019DE  43F9 000023CE           1028      LEA         IMMEDIATE_DATA_SYMBOL,A1
+000019E4  4EB8 1916               1029      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000019E8  4E75                    1030      RTS
+000019EA                          1031  
+000019EA                          1032  *******************************************************************************
+000019EA                          1033  ***************************************
+000019EA                          1034  * Query data section
+000019EA                          1035  * Contains utility methods
+000019EA                          1036  ***************************************
+000019EA                          1037  *******************************************************************************
+000019EA                          1038  
+000019EA                          1039  ***
+000019EA                          1040  * Get the left most byte. Assuming that the full word data is already store in D3
+000019EA                          1041  ***
+000019EA                          1042  GET_THE_FIRST_NIBBLE
+000019EA  E04B                    1043      LSR         #8,D3                               * Shift 2 bytes to the rights
+000019EC  E84B                    1044      LSR         #4,D3                               * Shift 1 byte to the right. Now left most byte is now the right most byte
+000019EE  4E75                    1045      RTS
+000019F0                          1046  
+000019F0                          1047  ***
+000019F0                          1048  * Get the second nibble from the left
+000019F0                          1049  ***
+000019F0                          1050  GET_THE_SECOND_NIBBLE
+000019F0  E94B                    1051      LSL         #4,D3                               * Shift the left most byte to go away
+000019F2  E84B                    1052      LSR         #4,D3                               * Return the original place
+000019F4  E04B                    1053      LSR         #8,D3                               * Push the 2 right most byte out of the way
+000019F6  4E75                    1054      RTS
+000019F8                          1055  
+000019F8                          1056  ***
+000019F8                          1057  * Get the third nibble from the left
+000019F8                          1058  ***
+000019F8                          1059  GET_THE_THIRD_NIBBLE
+000019F8  E14B                    1060      LSL         #8,D3                               * Bye byte 2 left most nibble
+000019FA  E04B                    1061      LSR         #8,D3                               * Get rid of the 3 bytes that are infront
+000019FC  E84B                    1062      LSR         #4,D3                               * Shift back to original position
+000019FE  4E75                    1063      RTS
+00001A00                          1064  
+00001A00                          1065  ***
+00001A00                          1066  * Get the fourth nibble from the left
+00001A00                          1067  ***
+00001A00                          1068  GET_THE_FOURTH_NIBBLE
+00001A00  E14B                    1069      LSL         #8,D3
+00001A02  E94B                    1070      LSL         #4,D3
+00001A04  E04B                    1071      LSR         #8,D3
+00001A06  E84B                    1072      LSR         #4,D3
+00001A08  4E75                    1073      RTS
+00001A0A                          1074  
+00001A0A                          1075  ***
+00001A0A                          1076  * Advance 2 bytes for Word ( 4 nibbles)
+00001A0A                          1077  ***
+00001A0A                          1078  GET_NEXT_FOUR_NIBBLE
+00001A0A  361A                    1079      MOVE.W      (A2)+,D3
+00001A0C  31C3 0200               1080      MOVE.W      D3, TEMP_CURRENT_4_NIBBLES          * Copy the value into temp variable
+00001A10  B7CA                    1081      CMPA.L      A2,A3                               * Check the starting and ending address if we have surpass it
+00001A12  6F00 0020               1082      BLE         FINISH_DISASSEMBLING
+00001A16  4E75                    1083      RTS
+00001A18                          1084  
+00001A18                          1085  ***
+00001A18                          1086  * Advance 1 byte for word (2 nibbles)
+00001A18                          1087  ***
+00001A18                          1088  GET_NEXT_TWO_NIBBLE
+00001A18  161A                    1089      MOVE.B      (A2)+,D3                            * Get the next byte ( 2 nibbles)
+00001A1A  11C3 0750               1090      MOVE.B      D3, TEMP_CURRENT_2_NIBBLES
+00001A1E  4E75                    1091      RTS
+00001A20                          1092  
+00001A20                          1093  ***
+00001A20                          1094  * Get the normal size in the opcode, usually the first 2 bit of the third nibble
+00001A20                          1095  ***
+00001A20                          1096  GET_NORMAL_SIZE
+00001A20  4EB9 00001A4E           1097      JSR         CHECK_TYPE_DATA
+00001A26  3638 0300               1098      MOVE.W      DESTINATION_MODE,D3
+00001A2A  E14B                    1099      LSL         #8,D3
+00001A2C  ED4B                    1100      LSL         #6,D3
+00001A2E  E04B                    1101      LSR         #8,D3
+00001A30  EC4B                    1102      LSR         #6,D3
+00001A32  4E75                    1103      RTS
+00001A34                          1104  
+00001A34                          1105  ***
+00001A34                          1106  * Display prompt saying that it has finished disassembling
+00001A34                          1107  ***
+00001A34                          1108  FINISH_DISASSEMBLING
+00001A34  43F9 000023C2           1109      LEA         SPACE,A1
+00001A3A  103C 000D               1110      MOVE.B      #13,D0
+00001A3E  4E4F                    1111      TRAP        #15
+00001A40  43F9 0000226A           1112      LEA         FINISH,A1
+00001A46  4EB8 1916               1113      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001A4A  FFFF FFFF               1114      SIMHALT
+00001A4E                          1115  
+00001A4E                          1116  *******************************************************************************
+00001A4E                          1117  * logical reasoning section (determine what kind of opcode to print, what type of data to print)
+00001A4E                          1118  *******************************************************************************
+00001A4E                          1119  
+00001A4E                          1120  
+00001A4E                          1121  ***
+00001A4E                          1122  * getting the appropriate source and destination register  and mode
+00001A4E                          1123  * Destionation var - destionation mode - source mode - soruce var
+00001A4E                          1124  ***
+00001A4E                          1125  CHECK_TYPE_DATA
+00001A4E  3638 0200               1126      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001A52  E94B                    1127      LSL         #4,D3                               * Get rid of left most byte
+00001A54  E84B                    1128      LSR         #4,D3                               * Now focus on the following format      destination mode mode source. Start with destination first
+00001A56  E04B                    1129      LSR         #8,D3                               * Now the D3 has the destination
+00001A58  E24B                    1130      LSR         #1,D3
+00001A5A  31C3 0250               1131      MOVE.W      D3,DESTINATION_VAR
+00001A5E  3638 0200               1132      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3           * Now go with the destination mode
+00001A62  EF4B                    1133      LSL         #7,D3
+00001A64  EE4B                    1134      LSR         #7,D3
+00001A66  EC4B                    1135      LSR         #6,D3
+00001A68  31C3 0300               1136      MOVE.W      D3,DESTINATION_MODE
+00001A6C  3638 0200               1137      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3           * Now extract the source mode
+00001A70  E14B                    1138      LSL         #8,D3
+00001A72  E54B                    1139      LSL         #2,D3
+00001A74  E04B                    1140      LSR         #8,D3
+00001A76  E44B                    1141      LSR         #2,D3
+00001A78  E64B                    1142      LSR         #3,D3
+00001A7A  31C3 0350               1143      MOVE.W      D3,SOURCE_MODE                      * Now extract the source
+00001A7E  3638 0200               1144      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001A82  E14B                    1145      LSL         #8,D3
+00001A84  EB4B                    1146      LSL         #5,D3
+00001A86  E04B                    1147      LSR         #8,D3
+00001A88  EA4B                    1148      LSR         #5,D3
+00001A8A  31C3 0400               1149      MOVE.W      D3,SOURCE_VAR
+00001A8E  3638 0200               1150      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001A92  4E75                    1151      RTS
+00001A94                          1152  
+00001A94                          1153  ***
+00001A94                          1154  * Reasoning section for NOP, JSR, RTS
+00001A94                          1155  ***
+00001A94                          1156  FIRST_NIBBLE_4_SECOND_NIBBLE_E
+00001A94  3638 0200               1157      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001A98  E14B                    1158      LSL         #8,D3                               * Shift to the left to dissappear 2 left most byte
+00001A9A  E04B                    1159      LSR         #8,D3                               * Shift to the right to gain back original position. Only now the 2 left most byte are gone
+00001A9C  B63C 0071               1160      CMP.B       #$71,D3                             * NOP is 4E71
+00001AA0  6700 F778               1161      BEQ         PRINT_OUT_NOP
+00001AA4  B63C 0075               1162      CMP.B       #$75,D3                             *RTS is 4E75
+00001AA8  6700 F786               1163      BEQ         PRINT_OUT_RTS
+00001AAC  3638 0200               1164      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001AB0  4EB8 1A4E               1165      JSR         CHECK_TYPE_DATA                     *  Get the destination mode and desitnation register. Could be JSR
+00001AB4  3638 0200               1166      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001AB8  4EB8 19F8               1167      JSR         GET_THE_THIRD_NIBBLE                * For Jsr  the 2 bit of the 3rd nibble is 10
+00001ABC  E44B                    1168      LSR         #2, D3
+00001ABE  B67C 0002               1169      CMP         #%10, D3
+00001AC2  6700 F798               1170      BEQ         PRINT_OUT_JSR                       * Print out the command JSR and the data
+00001AC6  6000 F6E8               1171      BRA         INVALID
+00001ACA  4E75                    1172      RTS
+00001ACC                          1173  
+00001ACC                          1174  ********************************************************************************
+00001ACC                          1175  * Specific branching of the jump table is stored here
+00001ACC                          1176  *******************************************************************************
+00001ACC                          1177  FIRST_NIBBLE_JUMP_TABLE                  * Based on the first byte of the op code then jump on what is possible
+00001ACC  4EF9 00001B2C           1178      JMP         FIRST_NIBBLE_IS_0               * ORI, CMPI. BCLR
+00001AD2  4EF9 00001B42           1179      JMP         FIRST_NIBBLE_IS_1               * MOVE.B, MOVEA.B
+00001AD8  4EF9 00001B4A           1180      JMP         FIRST_NIBBLE_IS_2               * MOVEA.L, MOVE.L
+00001ADE  4EF9 00001B52           1181      JMP         FIRST_NIBBLE_IS_3               * MOVE.W    MOVEA.W
+00001AE4  4EF9 00001B5A           1182      JMP         FIRST_NIBBLE_IS_4               * NOP, LEA, NEG, JSR, RTS
+00001AEA  4EF9 00001B8A           1183      JMP         FIRST_NIBBLE_IS_5               * SUBQ
+00001AF0  4EF9 00001BC0           1184      JMP         FIRST_NIBBLE_IS_6               * BCS, BGE, BLT, BVC, BRA
+00001AF6  4EF9 00001BE2           1185      JMP         FIRST_NIBBLE_IS_7               * NOT SUPPORTED
+00001AFC  4EF9 00001C02           1186      JMP         FIRST_NIBBLE_IS_8               * DIVS, OR
+00001B02  4EF9 00001C28           1187      JMP         FIRST_NIBBLE_IS_9               * SUB
+00001B08  4EF9 00001C44           1188      JMP         FIRST_NIBBLE_IS_A               * NOT SUPPORTED
+00001B0E  4EF9 00001C4C           1189      JMP         FIRST_NIBBLE_IS_B               * EOR, CMP
+00001B14  4EF9 00001C80           1190      JMP         FIRST_NIBBLE_IS_C               * MULS
+00001B1A  4EF9 00001CB6           1191      JMP         FIRST_NIBBLE_IS_D               * ADD, ADDA
+00001B20  4EF9 00001CD4           1192      JMP         FIRST_NIBBLE_IS_E               * LSR, LSL, ASR, ASL, ROL, ROR
+00001B26  4EF9 00001D0A           1193      JMP         FIRST_NIBBLE_IS_F               * NOT SUPPORTED
+00001B2C                          1194  
+00001B2C                          1195  FIRST_NIBBLE_IS_0
+00001B2C  3638 0200               1196      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001B30  4EB8 19F0               1197      JSR         GET_THE_SECOND_NIBBLE
+00001B34  B67C 000C               1198      CMP         #$C, D3
+00001B38  6700 F74C               1199      BEQ         PRINT_OUT_CMPI
+00001B3C  6000 F672               1200      BRA         INVALID
+00001B40  4E75                    1201      RTS
+00001B42                          1202  
+00001B42                          1203  
+00001B42                          1204  FIRST_NIBBLE_IS_1 *MOVE.B, MOVEA.B * Can only be MOVE for these nibble because of the size of MOVE
+00001B42  4EB8 18A4               1205      JSR         MOVE_OPCODE_HELPER
+00001B46  FFFF FFFF               1206      SIMHALT
+00001B4A                          1207  
+00001B4A                          1208  FIRST_NIBBLE_IS_2 *MOVE.L, MOVEA.L
+00001B4A  4EB8 18A4               1209      JSR         MOVE_OPCODE_HELPER
+00001B4E  FFFF FFFF               1210      SIMHALT
+00001B52                          1211  
+00001B52                          1212  FIRST_NIBBLE_IS_3 * MOVE.W, MOVEA.W
+00001B52  4EB8 18A4               1213      JSR         MOVE_OPCODE_HELPER
+00001B56  FFFF FFFF               1214      SIMHALT
+00001B5A                          1215  
+00001B5A                          1216  FIRST_NIBBLE_IS_4                                       * Possible for NOP,LEA,RTS,JSR,NEG. Now will check the second byte
+00001B5A  3638 0200               1217      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3               * Get the original op code back
+00001B5E  4EB8 19F0               1218      JSR         GET_THE_SECOND_NIBBLE
+00001B62  B63C 000E               1219      CMP.B       #$E,D3
+00001B66  6700 FF2C               1220      BEQ         FIRST_NIBBLE_4_SECOND_NIBBLE_E          * NOP,RTS,JSR
+00001B6A  B63C 0004               1221      CMP.B       #4,D3                                   *If the second nibble is 4, then it must be neg
+00001B6E  6700 F66E               1222      BEQ         PRINT_OUT_NEG
+00001B72  3638 0200               1223      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001B76  4EB8 1A4E               1224      JSR         CHECK_TYPE_DATA
+00001B7A  0C78 0007 0300          1225      CMP         #%111,DESTINATION_MODE
+00001B80  6700 F7AE               1226      BEQ         PRINT_OUT_LEA                           * Only LEA have the 3 bits of destination is 111
+00001B84  6000 F62A               1227      BRA         INVALID
+00001B88  4E75                    1228      RTS
+00001B8A                          1229  
+00001B8A                          1230  FIRST_NIBBLE_IS_5                                       * This is SUBQ and ADDQ
+00001B8A  3638 0200               1231      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001B8E  4EB8 1A4E               1232      JSR         CHECK_TYPE_DATA
+00001B92  4EB8 1A20               1233      JSR         GET_NORMAL_SIZE                         * SUBQ and ADDQ only accpet normal size. Meaning no 11
+00001B96  B67C 0003               1234      CMP         #%11,D3
+00001B9A  6700 F614               1235      BEQ         INVALID
+00001B9E  3638 0200               1236      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001BA2  4EB8 19F0               1237      JSR         GET_THE_SECOND_NIBBLE
+00001BA6  E14B                    1238      LSL         #8,D3                                   * Get rid of the first 2 byets
+00001BA8  EF4B                    1239      LSL         #7,D3                                   * Shift back to original position
+00001BAA  E04B                    1240      LSR         #8,D3
+00001BAC  EE4B                    1241      LSR         #7,D3
+00001BAE  B67C 0000               1242      CMP         #0,D3                                   * SUBQ have 1 as the last bit in the second nibble
+00001BB2  6700 F7C4               1243      BEQ         PRINT_OUT_ADDQ                          * ADDQ has 0 as the last bit in the second nibble
+00001BB6  6000 F7CA               1244      BRA         PRINT_OUT_SUBQ
+00001BBA  4E75                    1245      RTS
+00001BBC  FFFF FFFF               1246      SIMHALT
+00001BC0                          1247  
+00001BC0                          1248  FIRST_NIBBLE_IS_6                                       * Bcc and BRA , BSR
+00001BC0  3638 0200               1249      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001BC4  4EB8 19F0               1250      JSR         GET_THE_SECOND_NIBBLE
+00001BC8  B67C 0000               1251      CMP         #%0000,D3                               * Only the condition code of BRA is 0000
+00001BCC  6700 FAE8               1252      BEQ         PRINT_OUT_BRA
+00001BD0  B67C 0001               1253      CMP         #%0001,D3
+00001BD4  6700 FB12               1254      BEQ         PRINT_OUT_BSR
+00001BD8  6000 FB40               1255      BRA         PRINT_OUT_Bcc
+00001BDC  4E75                    1256      RTS
+00001BDE  FFFF FFFF               1257      SIMHALT
+00001BE2                          1258  
+00001BE2                          1259  FIRST_NIBBLE_IS_7                                       * This is MOVEQ
+00001BE2  3638 0200               1260      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001BE6  4EB8 19F0               1261      JSR         GET_THE_SECOND_NIBBLE
+00001BEA  E14B                    1262      LSL         #8,D3
+00001BEC  EF4B                    1263      LSL         #7,D3
+00001BEE  E04B                    1264      LSR         #8,D3
+00001BF0  EE4B                    1265      LSR         #7,D3
+00001BF2  B67C 0000               1266      CMP         #0,D3
+00001BF6  6700 F8FA               1267      BEQ         PRINT_OUT_MOVEQ
+00001BFA  6000 F5B4               1268      BRA         INVALID
+00001BFE  FFFF FFFF               1269      SIMHALT
+00001C02                          1270  
+00001C02                          1271  FIRST_NIBBLE_IS_8                                       * DIVS, Can't recognize SBCD
+00001C02  3638 0200               1272      MOVE.W      TEMP_CURRENT_4_NIBBLES, D3
+00001C06  4EB8 1A4E               1273      JSR         CHECK_TYPE_DATA
+00001C0A  0C78 0007 0300          1274      CMP         #%111, DESTINATION_MODE
+00001C10  6700 F7F0               1275      BEQ         PRINT_OUT_DIVS
+00001C14  0C78 0003 0300          1276      CMP         #%011, DESTINATION_MODE
+00001C1A  6700 F594               1277      BEQ         INVALID                                 * This is DIVU
+00001C1E  6000 F99E               1278      BRA         PRINT_OUT_OR
+00001C22  4E75                    1279      RTS
+00001C24  FFFF FFFF               1280      SIMHALT
+00001C28                          1281  
+00001C28                          1282  FIRST_NIBBLE_IS_9                                       * SUB and SUBA           * No way of knowing SUX
+00001C28  3638 0200               1283      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001C2C  4EB8 1A4E               1284      JSR         CHECK_TYPE_DATA
+00001C30  4EB8 1A20               1285      JSR         GET_NORMAL_SIZE
+00001C34  B67C 0003               1286      CMP         #%11,D3
+00001C38  6700 F920               1287      BEQ         PRINT_OUT_SUBA                          * SUB Does not accept the size of 11
+00001C3C  6000 F994               1288      BRA         PRINT_OUT_SUB
+00001C40  FFFF FFFF               1289      SIMHALT
+00001C44                          1290  
+00001C44                          1291  FIRST_NIBBLE_IS_A                                       * There are not any opcode with 1010
+00001C44  6000 F56A               1292      BRA         INVALID
+00001C48  FFFF FFFF               1293      SIMHALT
+00001C4C                          1294  
+00001C4C                          1295  FIRST_NIBBLE_IS_B                                       * CMP
+00001C4C  3638 0200               1296      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001C50  4EB8 1A4E               1297      JSR         CHECK_TYPE_DATA
+00001C54  4EB8 1A20               1298      JSR         GET_NORMAL_SIZE
+00001C58  B67C 0003               1299      CMP         #%11, D3
+00001C5C  6700 F552               1300      BEQ         INVALID                                 * CMP does not accept size 11
+00001C60  3638 0200               1301      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001C64  4EB8 19F0               1302      JSR         GET_THE_SECOND_NIBBLE
+00001C68  E14B                    1303      LSL         #8,D3                                   * Get the last bit of the second nibble
+00001C6A  EF4B                    1304      LSL         #7,D3
+00001C6C  EE4B                    1305      LSR         #7,D3
+00001C6E  E04B                    1306      LSR         #8,D3
+00001C70  B67C 0000               1307      CMP         #0,D3                                   * CMP only accept 0 as the last bit in the second nibble
+00001C74  6600 F53A               1308      BNE         INVALID
+00001C78  6000 F82C               1309      BRA         PRINT_OUT_CMP
+00001C7C  FFFF FFFF               1310      SIMHALT
+00001C80                          1311  
+00001C80                          1312  FIRST_NIBBLE_IS_C                                       * MULS and MULU
+00001C80  3638 0200               1313      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001C84  4EB8 1A4E               1314      JSR         CHECK_TYPE_DATA
+00001C88  4EB8 1A20               1315      JSR         GET_NORMAL_SIZE
+00001C8C  B67C 0003               1316      CMP         #%11,D3
+00001C90  6600 F51E               1317      BNE         INVALID                                 * MULS only accept 11 as the size
+00001C94  3638 0200               1318      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001C98  4EB8 19F0               1319      JSR         GET_THE_SECOND_NIBBLE
+00001C9C  E14B                    1320      LSL         #8,D3                                   * Get the last bit of the second
+00001C9E  EF4B                    1321      LSL         #7,D3
+00001CA0  EE4B                    1322      LSR         #7,D3
+00001CA2  E04B                    1323      LSR         #8,D3
+00001CA4  B67C 0001               1324      CMP         #1,D3                                   * If it is 1, then it is MULS. Otherwise MULU
+00001CA8  6700 F79C               1325      BEQ         PRINT_OUT_MULS
+00001CAC  6000 F7F0               1326      BRA         PRINT_OUT_MULU
+00001CB0  4E75                    1327      RTS
+00001CB2  FFFF FFFF               1328      SIMHALT
+00001CB6                          1329  
+00001CB6                          1330  FIRST_NIBBLE_IS_D *ADD, ADDA                            * Have no way of knowing ADDX
+00001CB6  3638 0200               1331      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001CBA  4EB8 1A4E               1332      JSR         CHECK_TYPE_DATA
+00001CBE  4EB8 1A20               1333      JSR         GET_NORMAL_SIZE
+00001CC2  B67C 0003               1334      CMP         #%11,D3
+00001CC6  6700 F89C               1335      BEQ         PRINT_OUT_ADDA
+00001CCA  6000 F8FC               1336      BRA         PRINT_OUT_ADD
+00001CCE  4E75                    1337      RTS
+00001CD0  FFFF FFFF               1338      SIMHALT
+00001CD4                          1339  
+00001CD4                          1340  FIRST_NIBBLE_IS_E                                       * There are 2 types for every LSL,LSR,ASL,ASR,ROR,ROL. They can be seperated as LSd <ea> and other. They can be differentiate by the size 11
+00001CD4  3638 0200               1341      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001CD8  4EB8 1A4E               1342      JSR         CHECK_TYPE_DATA
+00001CDC  4EB8 1A20               1343      JSR         GET_NORMAL_SIZE
+00001CE0  B67C 0003               1344      CMP         #%11,D3
+00001CE4  6700 002A               1345      BEQ         SPECIAL_SHIFT_INSTRUCTION               * Only the instructions with 11 in the size parts deal with <ea> (shift memory)
+00001CE8  3638 0200               1346      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001CEC  4EB8 1A4E               1347      JSR         CHECK_TYPE_DATA
+00001CF0  4EB8 19F8               1348      JSR         GET_THE_THIRD_NIBBLE                    * For ASd and LSd, the lat bit is 0 of third nibble is 0
+00001CF4  E14B                    1349      LSL         #8,D3                                   * Get the last bit of the second
+00001CF6  EF4B                    1350      LSL         #7,D3
+00001CF8  EE4B                    1351      LSR         #7,D3
+00001CFA  E04B                    1352      LSR         #8,D3
+00001CFC  B67C 0000               1353      CMP         #0,D3
+00001D00  6700 FAD2               1354      BEQ         PRINT_OUT_ASD_OR_LSD
+00001D04  6000 FB04               1355      BRA         PRINT_OUT_ROD                           * Could also be ROXD. If it is then invalid
+00001D08  4E75                    1356      RTS
+00001D0A                          1357  
+00001D0A                          1358  
+00001D0A                          1359  FIRST_NIBBLE_IS_F * UNSUPPORTED
+00001D0A  4E75                    1360      RTS
+00001D0C  FFFF FFFF               1361      SIMHALT
+00001D10                          1362  
+00001D10                          1363  SPECIAL_SHIFT_INSTRUCTION                               *Asd, LSd,ROd with <ea>. Shift instructions
+00001D10  3638 0200               1364      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+00001D14  4EB8 1A4E               1365      JSR         CHECK_TYPE_DATA
+00001D18  4EB8 19F0               1366      JSR         GET_THE_SECOND_NIBBLE
+00001D1C  E24B                    1367      LSR         #1, D3
+00001D1E  B67C 0001               1368      CMP         #1,D3
+00001D22  6700 FA40               1369      BEQ         PRINT_OUT_LOGICAL_SHIFT_MEM             * 001
+00001D26  B67C 0000               1370      CMP         #0,D3
+00001D2A  6700 FA46               1371      BEQ         PRINT_OUT_ARITH_SHIFT_MEM               *000
+00001D2E  B67C 0003               1372      CMP         #%11,D3
+00001D32  6700 FA94               1373      BEQ         PRINT_OUT_ROTATE_MEM                    * 011
+00001D36  6000 F478               1374      BRA         INVALID                                 * Must be ROXd, UNSUPPORTED
+00001D3A  4E75                    1375      RTS
+00001D3C                          1376  
+00001D3C                          1377  *******************************************************************************
+00001D3C                          1378  * Jump table section
+00001D3C                          1379  *******************************************************************************
+00001D3C                          1380  * Used to figure out what type of mode and address where used to print
+00001D3C                          1381  REGISTER_MODE_JUMP_TABLE
+00001D3C  4EF9 00001D6C           1382      JMP         REGISTER_MODE_000                       * Data register mode Dn
+00001D42  4EF9 00001D76           1383      JMP         REGISTER_MODE_001                       * ADdress register mode   An
+00001D48  4EF9 00001D80           1384      JMP         REGISTER_MODE_010                       * Indirect address register mode (An)
+00001D4E  4EF9 00001D8E           1385      JMP         REGISTER_MODE_011                       *  Address register with increment (An)+
+00001D54  4EF9 00001D98           1386      JMP         REGISTER_MODE_100                       * Address register with decrement -(An)
+00001D5A  4EF9 00001DA2           1387      JMP         REGISTER_MODE_101                       * Not supported
+00001D60  4EF9 00001DA8           1388      JMP         REGISTER_MODE_110                       * Not supported
+00001D66  4EF9 00001DAE           1389      JMP         REGISTER_MODE_111                       * This could be immediate, absolute short or absolute long
+00001D6C                          1390  
+00001D6C                          1391  REGISTER_MODE_000                                       * Print out data register Dn
+00001D6C  4EB8 198A               1392      JSR         PRINT_DATA_REGISTER
+00001D70  4EB8 1316               1393      JSR         PRINT_REGISTER_NUMBER
+00001D74  4E75                    1394      RTS
+00001D76                          1395  
+00001D76                          1396  REGISTER_MODE_001           * An
+00001D76  4EB8 197E               1397      JSR         PRINT_ADDRESS_REGISTER
+00001D7A  4EB8 1316               1398      JSR         PRINT_REGISTER_NUMBER
+00001D7E  4E75                    1399      RTS
+00001D80                          1400  
+00001D80                          1401  REGISTER_MODE_010           * (An)
+00001D80  4EB8 1996               1402      JSR         PRINT_OPEN_BRACKET
+00001D84  4EB8 1D76               1403      JSR         REGISTER_MODE_001
+00001D88  4EB8 19A2               1404      JSR         PRINT_CLOSE_BRACKET
+00001D8C  4E75                    1405      RTS
+00001D8E                          1406  
+00001D8E                          1407  REGISTER_MODE_011           *(An)+
+00001D8E  4EB8 1D80               1408      JSR         REGISTER_MODE_010
+00001D92  4EB8 19AE               1409      JSR         PRINT_PLUS_SIGN
+00001D96  4E75                    1410      RTS
+00001D98                          1411  
+00001D98                          1412  REGISTER_MODE_100       * -(An)
+00001D98  4EB8 19BA               1413      JSR         PRINT_MINUS_SIGN
+00001D9C  4EB8 1D80               1414      JSR         REGISTER_MODE_010
+00001DA0  4E75                    1415      RTS
+00001DA2                          1416  
+00001DA2                          1417  REGISTER_MODE_101                   * Not supported yet. Will deal later
+00001DA2  6000 F40C               1418      BRA         INVALID
+00001DA6  4E75                    1419      RTS
+00001DA8                          1420  
+00001DA8                          1421  REGISTER_MODE_110                   * Not supported. Will deal later
+00001DA8  6000 F406               1422      BRA         INVALID
+00001DAC  4E75                    1423      RTS
+00001DAE                          1424  
+00001DAE                          1425  REGISTER_MODE_111                               * Immediate data, absolute long or absolute short
+00001DAE  49F9 00001E32           1426      LEA         REGISTER_111_JUMP_TABLE,A4      * Print out the appropriate value
+00001DB4  3638 0550               1427      MOVE.W      THIRD_TEMP_VAR,D3
+00001DB8  C6FC 0006               1428      MULU        #6,D3
+00001DBC  4EB4 3000               1429      JSR         0(A4,D3)
+00001DC0  49F9 00001DD4           1430      LEA         SHORT_OR_LONG_PRINT,A4          * Prepare the table to print out the data
+00001DC6  3638 0550               1431      MOVE.W      THIRD_TEMP_VAR,D3
+00001DCA  C6FC 0006               1432      MULU        #6,D3                           * Use THIRD_TEMP_VAR as a place holder for the data we want to print out for register mode 111.
+00001DCE                          1433                                                  * In the code before this, we need to move the appropriate data into this address. Either the destination or the source
+00001DCE  4EB4 3000               1434      JSR         0(A4,D3)                        * Print out the appropriate long or short value
+00001DD2  4E75                    1435      RTS
+00001DD4                          1436  
+00001DD4                          1437  * Third table that deal with printing out short .W or .L value
+00001DD4                          1438  SHORT_OR_LONG_PRINT                             * Will jump to this when the register mode is 111 and not immediate data
+00001DD4  4EF9 00001DF2           1439      JMP         ABSOLUTE_SHORT                  * Xn index for this is 000
+00001DDA  4EF9 00001E00           1440      JMP         ABSOLUTE_LONG                   * Xn index for this is 001
+00001DE0  4EF9 00001E0E           1441      JMP         COUNTER_DISPLACEMENT
+00001DE6  4EF9 00001E16           1442      JMP         COUNTER_INDEX
+00001DEC  4EF9 00001E1E           1443      JMP         IMMEDIATE_DATA
+00001DF2                          1444  
+00001DF2                          1445  ABSOLUTE_SHORT                                  *We need to get the next 4 bytes as the address to print out
+00001DF2  4EB8 1A0A               1446      JSR         GET_NEXT_FOUR_NIBBLE            * Got next 4 nibbles to print out as address
+00001DF6  4EB8 1128               1447      JSR         CONVERT_HEX_TO_ASCII
+00001DFA  4E75                    1448      RTS
+00001DFC  FFFF FFFF               1449      SIMHALT
+00001E00                          1450  
+00001E00                          1451  ABSOLUTE_LONG                                   * Print the next 8 bytes as the address
+00001E00  4EB8 1DF2               1452      JSR         ABSOLUTE_SHORT                  * PRinted 4 bytes
+00001E04  4EB8 1DF2               1453      JSR         ABSOLUTE_SHORT                  * Printed 4 more
+00001E08  4E75                    1454      RTS
+00001E0A  FFFF FFFF               1455      SIMHALT
+00001E0E                          1456  
+00001E0E                          1457  COUNTER_DISPLACEMENT                            * Not SUPPORTED
+00001E0E  6000 F3A0               1458      BRA         INVALID
+00001E12  FFFF FFFF               1459      SIMHALT
+00001E16                          1460  
+00001E16                          1461  COUNTER_INDEX                                   * Not SUPPORTED
+00001E16  6000 F398               1462      BRA         INVALID
+00001E1A  FFFF FFFF               1463      SIMHALT
+00001E1E                          1464  
+00001E1E                          1465      * Immediate data is also like absolute short and long. Will take advantage of that
+00001E1E                          1466  IMMEDIATE_DATA
+00001E1E  4EB8 1A20               1467      JSR         GET_NORMAL_SIZE                 * Now the first 2 bit of third nibble is on the right most
+00001E22  E24B                    1468      LSR         #1, D3                          * Byte aand word are mapped to absolute short => 00 and 01 after shift will go to 00
+00001E24                          1469                                                  * If the size is long, the it will go to absolute long 10 => 01
+00001E24  49F8 1DD4               1470      LEA         SHORT_OR_LONG_PRINT,A4          * Prepare the table to print out the data
+00001E28  C6FC 0006               1471      MULU        #6,D3                           * Use THIRD_TEMP_VAR as a place holder for the data we want to print out for register mode 111.
+00001E2C                          1472                                                  * In the code before this, we need to move the appropriate data into this address. Either the destination or the source
+00001E2C                          1473  
+00001E2C  4EB4 3000               1474      JSR         0(A4,D3)                        * Print out the appropriate long or short value
+00001E30  4E75                    1475      RTS
+00001E32                          1476  
+00001E32                          1477  REGISTER_111_JUMP_TABLE
+00001E32  4EF9 00001E50           1478      JMP         PRINT_SHORT_SYMBOL
+00001E38  4EF9 00001E56           1479      JMP         PRINT_LONG_SYMBOL
+00001E3E  4EF9 00001E5C           1480      JMP         PLACE_HOLDER_3 * Won't be reached
+00001E44  4EF9 00001E64           1481      JMP         PLACE_HOLDER_4
+00001E4A  4EF9 00001E6C           1482      JMP         PRINT_IMMEDIATE_DATA_AND_HEX
+00001E50                          1483  
+00001E50                          1484  PRINT_SHORT_SYMBOL
+00001E50  4EB8 19C6               1485      JSR         PRINT_HEX_SYMBOL
+00001E54  4E75                    1486      RTS
+00001E56                          1487  
+00001E56                          1488  PRINT_LONG_SYMBOL
+00001E56  4EB8 19C6               1489      JSR         PRINT_HEX_SYMBOL
+00001E5A  4E75                    1490      RTS
+00001E5C                          1491  
+00001E5C                          1492  PLACE_HOLDER_3
+00001E5C  6000 F352               1493      BRA         INVALID
+00001E60  FFFF FFFF               1494      SIMHALT
+00001E64                          1495  
+00001E64                          1496  PLACE_HOLDER_4
+00001E64  6000 F34A               1497      BRA        INVALID
+00001E68  FFFF FFFF               1498      SIMHALT
+00001E6C                          1499  
+00001E6C                          1500  PRINT_IMMEDIATE_DATA_AND_HEX
+00001E6C  4EB8 19DE               1501      JSR         PRINT_IMMEDIATE_DATA_SYMBOL
+00001E70  4EB8 19C6               1502      JSR         PRINT_HEX_SYMBOL
+00001E74  4E75                    1503      RTS
+00001E76                          1504  
+00001E76                          1505  HEX_CHARACTER_JUMP_TABLE
+00001E76  4EF9 00001ED6           1506      JMP         PRINT_HEX_0
+00001E7C  4EF9 00001EE2           1507      JMP         PRINT_HEX_1
+00001E82  4EF9 00001EEE           1508      JMP         PRINT_HEX_2
+00001E88  4EF9 00001EFA           1509      JMP         PRINT_HEX_3
+00001E8E  4EF9 00001F06           1510      JMP         PRINT_HEX_4
+00001E94  4EF9 00001F12           1511      JMP         PRINT_HEX_5
+00001E9A  4EF9 00001F1E           1512      JMP         PRINT_HEX_6
+00001EA0  4EF9 00001F2A           1513      JMP         PRINT_HEX_7
+00001EA6  4EF9 00001F36           1514      JMP         PRINT_HEX_8
+00001EAC  4EF9 00001F42           1515      JMP         PRINT_HEX_9
+00001EB2  4EF9 00001F4E           1516      JMP         PRINT_HEX_A
+00001EB8  4EF9 00001F5A           1517      JMP         PRINT_HEX_B
+00001EBE  4EF9 00001F66           1518      JMP         PRINT_HEX_C
+00001EC4  4EF9 00001F72           1519      JMP         PRINT_HEX_D
+00001ECA  4EF9 00001F7E           1520      JMP         PRINT_HEX_E
+00001ED0  4EF9 00001F8A           1521      JMP         PRINT_HEX_F
+00001ED6                          1522  
+00001ED6                          1523  PRINT_HEX_0
+00001ED6  43F9 000023DE           1524      LEA         ZERO,A1
+00001EDC  4EB8 1916               1525      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001EE0  4E75                    1526      RTS
+00001EE2                          1527  
+00001EE2                          1528  PRINT_HEX_1
+00001EE2  43F9 000023E2           1529      LEA         ONE,A1
+00001EE8  4EB8 1916               1530      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001EEC  4E75                    1531      RTS
+00001EEE                          1532  
+00001EEE                          1533  PRINT_HEX_2
+00001EEE  43F9 000023E6           1534      LEA         TWO,A1
+00001EF4  4EB8 1916               1535      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001EF8  4E75                    1536      RTS
+00001EFA                          1537  
+00001EFA                          1538  PRINT_HEX_3
+00001EFA  43F9 000023EA           1539      LEA         THREE,A1
+00001F00  4EB8 1916               1540      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F04  4E75                    1541      RTS
+00001F06                          1542  
+00001F06                          1543  PRINT_HEX_4
+00001F06  43F9 000023EE           1544      LEA         FOUR,A1
+00001F0C  4EB8 1916               1545      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F10  4E75                    1546      RTS
+00001F12                          1547  
+00001F12                          1548  PRINT_HEX_5
+00001F12  43F9 000023F2           1549      LEA         FIVE,A1
+00001F18  4EB8 1916               1550      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F1C  4E75                    1551      RTS
+00001F1E                          1552  
+00001F1E                          1553  PRINT_HEX_6
+00001F1E  43F9 000023F6           1554      LEA         SIX,A1
+00001F24  4EB8 1916               1555      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F28  4E75                    1556      RTS
+00001F2A                          1557  
+00001F2A                          1558  PRINT_HEX_7
+00001F2A  43F9 000023FA           1559      LEA         SEVEN,A1
+00001F30  4EB8 1916               1560      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F34  4E75                    1561      RTS
+00001F36                          1562  
+00001F36                          1563  PRINT_HEX_8
+00001F36  43F9 000023FE           1564      LEA         EIGHT,A1
+00001F3C  4EB8 1916               1565      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F40  4E75                    1566      RTS
+00001F42                          1567  
+00001F42                          1568  PRINT_HEX_9
+00001F42  43F9 00002402           1569      LEA         NINE,A1
+00001F48  4EB8 1916               1570      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F4C  4E75                    1571      RTS
+00001F4E                          1572  
+00001F4E                          1573  PRINT_HEX_A
+00001F4E  43F9 00002406           1574      LEA         A,A1
+00001F54  4EB8 1916               1575      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F58  4E75                    1576      RTS
+00001F5A                          1577  
+00001F5A                          1578  PRINT_HEX_B
+00001F5A  43F9 0000240A           1579      LEA         B,A1
+00001F60  4EB8 1916               1580      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F64  4E75                    1581      RTS
+00001F66                          1582  
+00001F66                          1583  PRINT_HEX_C
+00001F66  43F9 0000240E           1584      LEA         C,A1
+00001F6C  4EB8 1916               1585      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F70  4E75                    1586      RTS
+00001F72                          1587  
+00001F72                          1588  PRINT_HEX_D
+00001F72  43F9 00002412           1589      LEA         D,A1
+00001F78  4EB8 1916               1590      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F7C  4E75                    1591      RTS
+00001F7E                          1592  
+00001F7E                          1593  PRINT_HEX_E
+00001F7E  43F9 00002416           1594      LEA         E,A1
+00001F84  4EB8 1916               1595      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F88  4E75                    1596      RTS
+00001F8A                          1597  
+00001F8A                          1598  PRINT_HEX_F
+00001F8A  43F9 0000241A           1599      LEA         F,A1
+00001F90  4EB8 1916               1600      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001F94  4E75                    1601      RTS
+00001F96                          1602  
+00001F96                          1603  MOVE_SIZE_PRINT_JUMP_TABLE
+00001F96  4EF9 00001FAE           1604      JMP         UNSUPPORTED_MOVE_SIZE
+00001F9C  4EF9 00001FB4           1605      JMP         MOVE_BYTE_SUFFIX
+00001FA2  4EF9 00001FC4           1606      JMP         MOVE_LONG_SUFFIX
+00001FA8  4EF9 00001FD4           1607      JMP         MOVE_WORD_SUFFIX
+00001FAE                          1608  
+00001FAE                          1609  UNSUPPORTED_MOVE_SIZE
+00001FAE  6000 F200               1610      BRA         INVALID
+00001FB2  4E75                    1611      RTS
+00001FB4                          1612  
+00001FB4                          1613  MOVE_BYTE_SUFFIX
+00001FB4  43F9 000023D2           1614      LEA         BYTE_SUFFIX,A1
+00001FBA  4EB8 1916               1615      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001FBE  4EB8 19D2               1616      JSR         PRINT_EMPTY_SPACE
+00001FC2  4E75                    1617      RTS
+00001FC4                          1618  
+00001FC4                          1619  MOVE_LONG_SUFFIX
+00001FC4  43F9 000023DA           1620      LEA         LONG_SUFFIX,A1
+00001FCA  4EB8 1916               1621      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001FCE  4EB8 19D2               1622      JSR         PRINT_EMPTY_SPACE
+00001FD2  4E75                    1623      RTS
+00001FD4                          1624  
+00001FD4                          1625  MOVE_WORD_SUFFIX
+00001FD4  43F9 000023D6           1626      LEA         WORD_SUFFIX,A1
+00001FDA  4EB8 1916               1627      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00001FDE  4EB8 19D2               1628      JSR         PRINT_EMPTY_SPACE
+00001FE2  4E75                    1629      RTS
+00001FE4                          1630  
+00001FE4                          1631  
+00001FE4                          1632  NORMAL_SIZE_PRINT_JUMP_TABLE
+00001FE4  4EF9 00001FFC           1633      JMP         PRINT_NORMAL_BYTE_SUFFIX
+00001FEA  4EF9 0000200C           1634      JMP         PRINT_NORMAL_WORD_SUFFIX
+00001FF0  4EF9 0000201C           1635      JMP         PRINT_NORMAL_LONG_SUFFIX
+00001FF6  4EF9 0000202C           1636      JMP         UNSUPPORTED_NORMAL_SUFFIX         * Could be move
+00001FFC                          1637  
+00001FFC                          1638  PRINT_NORMAL_BYTE_SUFFIX
+00001FFC  43F9 000023D2           1639      LEA         BYTE_SUFFIX,A1
+00002002  4EB8 1916               1640      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002006  4EB8 19D2               1641      JSR         PRINT_EMPTY_SPACE
+0000200A  4E75                    1642      RTS
+0000200C                          1643  
+0000200C                          1644  PRINT_NORMAL_WORD_SUFFIX
+0000200C  43F9 000023D6           1645      LEA         WORD_SUFFIX,A1
+00002012  4EB8 1916               1646      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002016  4EB8 19D2               1647      JSR         PRINT_EMPTY_SPACE
+0000201A  4E75                    1648      RTS
+0000201C                          1649  
+0000201C                          1650  PRINT_NORMAL_LONG_SUFFIX
+0000201C  43F9 000023DA           1651      LEA         LONG_SUFFIX,A1
+00002022  4EB8 1916               1652      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002026  4EB8 19D2               1653      JSR         PRINT_EMPTY_SPACE
+0000202A  4E75                    1654      RTS
+0000202C                          1655  
+0000202C                          1656  UNSUPPORTED_NORMAL_SUFFIX
+0000202C  6000 F182               1657      BRA         INVALID
+00002030  4E75                    1658      RTS
+00002032                          1659  
+00002032                          1660  *This jump table depends on the condition of Bcc
+00002032                          1661  CONDITION_JUMP_TABLE
+00002032  4EF9 00002092           1662      JMP         CONDITION_TRUE
+00002038  4EF9 00002096           1663      JMP         CONDITION_FALSE
+0000203E  4EF9 0000209A           1664      JMP         CONDITION_HIGHER
+00002044  4EF9 000020AA           1665      JMP         CONDITION_LOWER_OR_SAME
+0000204A  4EF9 000020BA           1666      JMP         CONDITION_CARRY_CLEAR
+00002050  4EF9 000020CA           1667      JMP         CONDITION_CARRY_SET                * Supported
+00002056  4EF9 000020DA           1668      JMP         CONDITION_NOT_EQUAL
+0000205C  4EF9 000020EA           1669      JMP         CONDITION_EQUAL
+00002062  4EF9 000020FA           1670      JMP         CONDITION_OVERFLOW_CLEAR            * Supported
+00002068  4EF9 0000210A           1671      JMP         CONDITION_OVERFLOW_SET
+0000206E  4EF9 0000211A           1672      JMP         CONDITION_PLUS
+00002074  4EF9 0000212A           1673      JMP         CONDITION_MINUS
+0000207A  4EF9 0000213A           1674      JMP         CONDITION_GREATER_OR_EQUAL         * Supported
+00002080  4EF9 0000214A           1675      JMP         CONDITION_LESS_THAN                * SUPPORTED
+00002086  4EF9 0000215A           1676      JMP         CONDITION_GREATER_THAN
+0000208C  4EF9 0000216A           1677      JMP         CONDITION_LESS_OR_EQUAL
+00002092                          1678  
+00002092                          1679  CONDITION_TRUE
+00002092  6000 F11C               1680      BRA         INVALID
+00002096                          1681  
+00002096                          1682  CONDITION_FALSE
+00002096  6000 F118               1683      BRA         INVALID
+0000209A                          1684  
+0000209A                          1685  CONDITION_HIGHER
+0000209A  43F9 00002364           1686      LEA         HIGHER_VALUE,A1
+000020A0  4EB8 1916               1687      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000020A4  4EB8 19D2               1688      JSR         PRINT_EMPTY_SPACE
+000020A8  4E75                    1689      RTS
+000020AA                          1690  
+000020AA                          1691  CONDITION_LOWER_OR_SAME
+000020AA  43F9 00002368           1692      LEA         LOWER_OR_SAME_VALUE,A1
+000020B0  4EB8 1916               1693      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000020B4  4EB8 19D2               1694      JSR         PRINT_EMPTY_SPACE
+000020B8  4E75                    1695      RTS
+000020BA                          1696  
+000020BA                          1697  CONDITION_CARRY_CLEAR
+000020BA  43F9 0000236C           1698      LEA         CARRY_CLEAR_VALUE,A1
+000020C0  4EB8 1916               1699      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000020C4  4EB8 19D2               1700      JSR         PRINT_EMPTY_SPACE
+000020C8  4E75                    1701      RTS
+000020CA                          1702  
+000020CA                          1703  
+000020CA                          1704  
+000020CA                          1705  CONDITION_CARRY_SET
+000020CA  43F9 00002398           1706      LEA         CARRY_SET_VALUE,A1
+000020D0  4EB8 1916               1707      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000020D4  4EB8 19D2               1708      JSR         PRINT_EMPTY_SPACE
+000020D8  4E75                    1709      RTS
+000020DA                          1710  
+000020DA                          1711  CONDITION_NOT_EQUAL
+000020DA  43F9 00002370           1712      LEA         NOT_EQUAL_VALUE,A1
+000020E0  4EB8 1916               1713      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000020E4  4EB8 19D2               1714      JSR         PRINT_EMPTY_SPACE
+000020E8  4E75                    1715      RTS
+000020EA                          1716  
+000020EA                          1717  CONDITION_EQUAL
+000020EA  43F9 00002374           1718      LEA         EQUAL_VALUE,A1
+000020F0  4EB8 1916               1719      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000020F4  4EB8 19D2               1720      JSR         PRINT_EMPTY_SPACE
+000020F8  4E75                    1721      RTS
+000020FA                          1722  
+000020FA                          1723  CONDITION_OVERFLOW_CLEAR
+000020FA  43F9 00002378           1724      LEA         OVERFLOW_CLEAR_VALUE,A1
+00002100  4EB8 1916               1725      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002104  4EB8 19D2               1726      JSR         PRINT_EMPTY_SPACE
+00002108  4E75                    1727      RTS
+0000210A                          1728  
+0000210A                          1729  CONDITION_OVERFLOW_SET
+0000210A  43F9 0000237C           1730      LEA         OVERFLOW_SET_VALUE,A1
+00002110  4EB8 1916               1731      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002114  4EB8 19D2               1732      JSR         PRINT_EMPTY_SPACE
+00002118  4E75                    1733      RTS
+0000211A                          1734  
+0000211A                          1735  CONDITION_PLUS
+0000211A  43F9 00002380           1736      LEA         PLUS_VALUE,A1
+00002120  4EB8 1916               1737      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002124  4EB8 19D2               1738      JSR         PRINT_EMPTY_SPACE
+00002128  4E75                    1739      RTS
+0000212A                          1740  
+0000212A                          1741  CONDITION_MINUS
+0000212A  43F9 00002384           1742      LEA         MINUS_VALUE,A1
+00002130  4EB8 1916               1743      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002134  4EB8 19D2               1744      JSR         PRINT_EMPTY_SPACE
+00002138  4E75                    1745      RTS
+0000213A                          1746  
+0000213A                          1747  CONDITION_GREATER_OR_EQUAL
+0000213A  43F9 00002388           1748      LEA         GREATER_OR_EQUAL_VALUE,A1
+00002140  4EB8 1916               1749      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002144  4EB8 19D2               1750      JSR         PRINT_EMPTY_SPACE
+00002148  4E75                    1751      RTS
+0000214A                          1752  
+0000214A                          1753  CONDITION_LESS_THAN
+0000214A  43F9 0000238C           1754      LEA         LESS_THAN_VALUE,A1
+00002150  4EB8 1916               1755      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002154  4EB8 19D2               1756      JSR         PRINT_EMPTY_SPACE
+00002158  4E75                    1757      RTS
+0000215A                          1758  
+0000215A                          1759  CONDITION_GREATER_THAN
+0000215A  43F9 00002390           1760      LEA         GREATER_THAN_VALUE,A1
+00002160  4EB8 1916               1761      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002164  4EB8 19D2               1762      JSR         PRINT_EMPTY_SPACE
+00002168  4E75                    1763      RTS
+0000216A                          1764  
+0000216A                          1765  CONDITION_LESS_OR_EQUAL
+0000216A  43F9 00002394           1766      LEA         LESS_OR_EQUAL_VALUE,A1
+00002170  4EB8 1916               1767      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002174  4EB8 19D2               1768      JSR         PRINT_EMPTY_SPACE
+00002178  4E75                    1769      RTS
+0000217A                          1770  
+0000217A                          1771  RIGHT_OR_LEFT_JUMP_TABLE
+0000217A  4EF9 00002186           1772      JMP         RIGHT_DIRECTION_PRINT
+00002180  4EF9 00002192           1773      JMP         LEFT_DIRECTION_PRINT
+00002186                          1774  
+00002186                          1775  RIGHT_DIRECTION_PRINT
+00002186  43F9 00002340           1776      LEA         RIGHT_DIRECTION,A1
+0000218C  4EB8 1916               1777      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+00002190  4E75                    1778      RTS
+00002192                          1779  
+00002192                          1780  LEFT_DIRECTION_PRINT
+00002192  43F9 0000233C           1781      LEA         LEFT_DIRECTION,A1
+00002198  4EB8 1916               1782      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+0000219C  4E75                    1783      RTS
+0000219E                          1784  
+0000219E                          1785  IMMEDIATE_OR_REGISTER_JUMP_TABLE                * Use for ASd, LSd, ROd operations
+0000219E  4EF9 000021AA           1786      JMP         IMMEDIATE_ROTATION
+000021A4  4EF9 000021D8           1787      JMP         REGISTER_ROTATION
+000021AA                          1788  
+000021AA                          1789  IMMEDIATE_ROTATION
+000021AA  43F9 000023CE           1790      LEA         IMMEDIATE_DATA_SYMBOL,A1
+000021B0  4EB8 1916               1791      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000021B4  3638 0200               1792      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000021B8  4EB8 19F0               1793      JSR         GET_THE_SECOND_NIBBLE
+000021BC  E24B                    1794      LSR         #1,D3
+000021BE  B67C 0000               1795      CMP         #0,D3
+000021C2  6700 003A               1796      BEQ         IMMEDIATE_ROTATION_HELPER       * For cases where the immediate is 0, make it 8
+000021C6  31C3 0550               1797      MOVE.W      D3, THIRD_TEMP_VAR              * Save the immediate data 1-8 we want to print
+000021CA  4EB8 1316               1798      JSR         PRINT_REGISTER_NUMBER
+000021CE  4EB8 1972               1799      JSR         PRINT_COMMA
+000021D2  4EB8 19D2               1800      JSR         PRINT_EMPTY_SPACE
+000021D6  4E75                    1801      RTS
+000021D8                          1802  
+000021D8                          1803  REGISTER_ROTATION
+000021D8  43F9 000023B6           1804      LEA         DATA_REGISTER,A1
+000021DE  4EB8 1916               1805      JSR         PRINT_TO_SCREEN_ENTIRE_STRING
+000021E2  3638 0200               1806      MOVE.W      TEMP_CURRENT_4_NIBBLES,D3
+000021E6  4EB8 19F0               1807      JSR         GET_THE_SECOND_NIBBLE
+000021EA  E24B                    1808      LSR         #1,D3
+000021EC  31C3 0550               1809      MOVE.W      D3,THIRD_TEMP_VAR
+000021F0  4EB8 1316               1810      JSR         PRINT_REGISTER_NUMBER
+000021F4  4EB8 1972               1811      JSR         PRINT_COMMA
+000021F8  4EB8 19D2               1812      JSR         PRINT_EMPTY_SPACE
+000021FC  4E75                    1813      RTS
+000021FE                          1814  
+000021FE                          1815  IMMEDIATE_ROTATION_HELPER
+000021FE  31FC 0008 0550          1816      MOVE.W      #8,THIRD_TEMP_VAR
+00002204  4EB8 1316               1817      JSR         PRINT_REGISTER_NUMBER
+00002208  4EB8 1972               1818      JSR         PRINT_COMMA
+0000220C  4EB8 19D2               1819      JSR         PRINT_EMPTY_SPACE
+00002210  4E75                    1820      RTS
+00002212                          1821  
+00002212                          1822  
+00002212                          1823  
+00002212                          1824  ******************************************************************
+00002212                          1825  * Constant String that is used to print out the data is stored here
+00002212                          1826  ******************************************************************
+00002212= 506C 6561 7365 2...     1827  INTRO_STARTING          DC.W        'Please enter starting address',0
+00002232= 506C 6561 7365 2...     1828  INTRO_ENDING            DC.W        'Please enter ending address',0
+00002250= 494E 5641 4C49 4...     1829  INVALID_INPUT           DC.W        'INVALID ADDRESS ENTERED',0
+0000226A= 4669 6E69 7368 2...     1830  FINISH                  DC.W        'Finish Dissassembling. Starting address has reached or passed ending address',0
+000022B8= 4E4F 5000 0000          1831  NOP_VALUE               DC.W        'NOP',0     * Requested
+000022BE= 5254 5300 0000          1832  RTS_VALUE               DC.W        'RTS',0     * Requested
+000022C4= 4F52 4900 0000          1833  ORI_VALUE               DC.W        'ORI',0     * Unfinished
+000022CA= 4A53 5200 0000          1834  JSR_VALUE               DC.W        'JSR',0     * Requested
+000022D0= 4C45 4100 0000          1835  LEA_VALUE               DC.W        'LEA',0     * Requested
+000022D6= 4E45 4700 0000          1836  NEG_VALUE               DC.W        'NEG',0     * Requested
+000022DC= 434D 5049 0000          1837  CMPI_VALUE              DC.W        'CMPI',0    * Requested
+000022E2= 434D 5000 0000          1838  CMP_VALUE               DC.W        'CMP',0     * Requested
+000022E8= 5355 4200 0000          1839  SUB_VALUE               DC.W        'SUB',0     * Requested
+000022EE= 5355 4241 0000          1840  SUBA_VALUE              DC.W        'SUBA',0    * Extra
+000022F4= 5355 4251 0000          1841  SUBQ_VALUE              DC.W        'SUBQ',0    * Requested
+000022FA= 4449 5653 0000          1842  DIVS_VALUE              DC.W        'DIVS',0    * Requested
+00002300= 4252 4100 0000          1843  BRA_VALUE               DC.W        'BRA',0     * Requested
+00002306= 4253 5200 0000          1844  BSR_VALUE               DC.W        'BSR',0     * Extra
+0000230C= 4D55 4C53 0000          1845  MULS_VALUE              DC.W        'MULS',0    * Requested
+00002312= 4D55 4C55 0000          1846  MULU_VALUE              DC.W        'MULU',0    * Extra
+00002318= 4144 4400 0000          1847  ADD_VALUE               DC.W        'ADD',0     * Requested
+0000231E= 4144 4441 0000          1848  ADDA_VALUE              DC.W        'ADDA',0    * Requested
+00002324= 4144 4451 0000          1849  ADDQ_VALUE              DC.W        'ADDQ',0    * Extra
+0000232A= 4153 0000               1850  AS_VALUE                DC.W        'AS',0      * Requested ASR, ASL
+0000232E= 4C53 0000               1851  LS_VALUE                DC.W        'LS',0      * Requested LSR, LSL
+00002332= 524F 0000               1852  RO_VALUE                DC.W        'RO',0      * Requested ROR, ROL
+00002336= 4243 4C52 0000          1853  BCLR_VALUE              DC.W        'BCLR',0    * Unfinished
+0000233C= 4C00 0000               1854  LEFT_DIRECTION          DC.W        'L',0
+00002340= 5200 0000               1855  RIGHT_DIRECTION         DC.W        'R',0
+00002344= 4F52 0000               1856  OR_VALUE                DC.W        'OR',0      * Extra
+00002348= 4D4F 5645 4100 0000     1857  MOVEA_VALUE             DC.W        'MOVEA',0   * Requested
+00002350= 4D4F 5645 0000          1858  MOVE_VALUE              DC.W        'MOVE',0    * Requested
+00002356= 4D4F 5645 5100 0000     1859  MOVEQ_VALUE             DC.W        'MOVEQ',0   * Extra
+0000235E= 4441 5441 0000          1860  DATA_VALUE              DC.W        'DATA',0
+00002364= 4849 0000               1861  HIGHER_VALUE            DC.W        'HI',0
+00002368= 4C53 0000               1862  LOWER_OR_SAME_VALUE     DC.W        'LS',0
+0000236C= 4343 0000               1863  CARRY_CLEAR_VALUE       DC.W        'CC',0
+00002370= 4E45 0000               1864  NOT_EQUAL_VALUE         DC.W        'NE',0
+00002374= 4551 0000               1865  EQUAL_VALUE             DC.W        'EQ',0
+00002378= 5643 0000               1866  OVERFLOW_CLEAR_VALUE    DC.W        'VC',0 *
+0000237C= 5653 0000               1867  OVERFLOW_SET_VALUE      DC.W        'VS',0
+00002380= 504C 0000               1868  PLUS_VALUE              DC.W        'PL',0
+00002384= 4D49 0000               1869  MINUS_VALUE             DC.W        'MI',0
+00002388= 4745 0000               1870  GREATER_OR_EQUAL_VALUE  DC.W        'GE',0 *
+0000238C= 4C54 0000               1871  LESS_THAN_VALUE         DC.W        'LT',0 *
+00002390= 4754 0000               1872  GREATER_THAN_VALUE      DC.W        'GT',0
+00002394= 4C45 0000               1873  LESS_OR_EQUAL_VALUE     DC.W        'LE',0
+00002398= 4353 0000               1874  CARRY_SET_VALUE         DC.W        'CS',0 *
+0000239C= 5352 0000               1875  SR_VALUE                DC.W        'SR',0
+000023A0= 4343 5200 0000          1876  CCR_VALUE               DC.W        'CCR',0
+000023A6= 2800 0000               1877  OPENING_BRACKET         DC.W        '(',0
+000023AA= 2900 0000               1878  CLOSING_BRACKET         DC.W        ')',0
+000023AE= 2B00 0000               1879  PLUS_SIGN               DC.W        '+',0
+000023B2= 2D00 0000               1880  MINUS_SIGN              DC.W        '-',0
+000023B6= 4400 0000               1881  DATA_REGISTER           DC.W        'D',0
+000023BA= 4100 0000               1882  ADDRESS_REGISTER        DC.W        'A',0
+000023BE= 2C00 0000               1883  COMMA                   DC.W        ',',0
+000023C2= 2000 0000               1884  SPACE                   DC.W        ' ',0
+000023C6= 2500 0000               1885  BINARY_SYMBOL           DC.W        '%',0
+000023CA= 2400 0000               1886  HEX_SYMBOL              DC.W        '$',0
+000023CE= 2300 0000               1887  IMMEDIATE_DATA_SYMBOL   DC.W        '#',0
+000023D2= 2E42 0000               1888  BYTE_SUFFIX             DC.W        '.B',0
+000023D6= 2E57 0000               1889  WORD_SUFFIX             DC.W        '.W',0
+000023DA= 2E4C 0000               1890  LONG_SUFFIX             DC.W        '.L',0
+000023DE= 3000 0000               1891  ZERO                    DC.W        '0',0
+000023E2= 3100 0000               1892  ONE                     DC.W        '1',0
+000023E6= 3200 0000               1893  TWO                     DC.W        '2',0
+000023EA= 3300 0000               1894  THREE                   DC.W        '3',0
+000023EE= 3400 0000               1895  FOUR                    DC.W        '4',0
+000023F2= 3500 0000               1896  FIVE                    DC.W        '5',0
+000023F6= 3600 0000               1897  SIX                     DC.W        '6',0
+000023FA= 3700 0000               1898  SEVEN                   DC.W        '7',0
+000023FE= 3800 0000               1899  EIGHT                   DC.W        '8',0
+00002402= 3900 0000               1900  NINE                    DC.W        '9',0
+00002406= 4100 0000               1901  A                       DC.W        'A',0
+0000240A= 4200 0000               1902  B                       DC.W        'B',0
+0000240E= 4300 0000               1903  C                       DC.W        'C',0
+00002412= 4400 0000               1904  D                       DC.W        'D',0
+00002416= 4500 0000               1905  E                       DC.W        'E',0
+0000241A= 4600 0000               1906  F                       DC.W        'F',0
+0000241E                          1907  
+0000241E                          1908  
+0000241E                          1909      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+A                   2406
+ABSOLUTE_LONG       1E00
+ABSOLUTE_SHORT      1DF2
+ADDA_VALUE          231E
+ADDQ_AND_SUBQ_HELPER  138C
+ADDQ_VALUE          2324
+ADDRESS_REGISTER    23BA
+ADD_AND_SUB_HELPER  15DC
+ADD_VALUE           2318
+ASD_LSD_ROD_HELPER_FUNCTION  182C
+ASD_LSD_ROD_SHIFT_HELPER  1780
+AS_VALUE            232A
+B                   240A
+BCLR_VALUE          2336
+BINARY_SYMBOL       23C6
+BRA_VALUE           2300
+BSR_VALUE           2306
+BYTE_SUFFIX         23D2
+C                   240E
+CARRY_CLEAR_VALUE   236C
+CARRY_SET_VALUE     2398
+CCR_VALUE           23A0
+CHECK_TYPE_DATA     1A4E
+CLOSING_BRACKET     23AA
+CMPI_VALUE          22DC
+CMP_VALUE           22E2
+COMMA               23BE
+CONDITION_CARRY_CLEAR  20BA
+CONDITION_CARRY_SET  20CA
+CONDITION_EQUAL     20EA
+CONDITION_FALSE     2096
+CONDITION_GREATER_OR_EQUAL  213A
+CONDITION_GREATER_THAN  215A
+CONDITION_HIGHER    209A
+CONDITION_JUMP_TABLE  2032
+CONDITION_LESS_OR_EQUAL  216A
+CONDITION_LESS_THAN  214A
+CONDITION_LOWER_OR_SAME  20AA
+CONDITION_MINUS     212A
+CONDITION_NOT_EQUAL  20DA
+CONDITION_OVERFLOW_CLEAR  20FA
+CONDITION_OVERFLOW_SET  210A
+CONDITION_PLUS      211A
+CONDITION_TRUE      2092
+CONVERT_ASCII_TO_HEX  1060
+CONVERT_CHARACTER_ASCII_TO_HEX  1086
+CONVERT_HEX_TO_ASCII  1128
+COUNTER_DISPLACEMENT  1E0E
+COUNTER_INDEX       1E16
+D                   2412
+DATA_REGISTER       23B6
+DATA_VALUE          235E
+DESTINATION_MODE    300
+DESTINATION_VAR     250
+DIVS_VALUE          22FA
+E                   2416
+EIGHT               23FE
+ENDING_ADDRESS      150
+EQUAL_VALUE         2374
+ERROR_INVALID_INPUT  1120
+F                   241A
+FIFTH_TEMP_VAR      650
+FINISH              226A
+FINISH_CONVERT_ENDING_ADDRESS  10C4
+FINISH_CONVERT_STARTING_ADDRESS  10AA
+FINISH_DISASSEMBLING  1A34
+FIRST_NIBBLE_4_SECOND_NIBBLE_E  1A94
+FIRST_NIBBLE_IS_0   1B2C
+FIRST_NIBBLE_IS_1   1B42
+FIRST_NIBBLE_IS_2   1B4A
+FIRST_NIBBLE_IS_3   1B52
+FIRST_NIBBLE_IS_4   1B5A
+FIRST_NIBBLE_IS_5   1B8A
+FIRST_NIBBLE_IS_6   1BC0
+FIRST_NIBBLE_IS_7   1BE2
+FIRST_NIBBLE_IS_8   1C02
+FIRST_NIBBLE_IS_9   1C28
+FIRST_NIBBLE_IS_A   1C44
+FIRST_NIBBLE_IS_B   1C4C
+FIRST_NIBBLE_IS_C   1C80
+FIRST_NIBBLE_IS_D   1CB6
+FIRST_NIBBLE_IS_E   1CD4
+FIRST_NIBBLE_IS_F   1D0A
+FIRST_NIBBLE_JUMP_TABLE  1ACC
+FIVE                23F2
+FOUR                23EE
+FOURTH_TEMP_VAR     600
+GET_END_ADDRESS     1024
+GET_NEXT_FOUR_NIBBLE  1A0A
+GET_NEXT_TWO_NIBBLE  1A18
+GET_NORMAL_SIZE     1A20
+GET_START_ADDRESS   1000
+GET_THE_FIRST_NIBBLE  19EA
+GET_THE_FOURTH_NIBBLE  1A00
+GET_THE_SECOND_NIBBLE  19F0
+GET_THE_THIRD_NIBBLE  19F8
+GREATER_OR_EQUAL_VALUE  2388
+GREATER_THAN_VALUE  2390
+HEX_CHARACTER_JUMP_TABLE  1E76
+HEX_SYMBOL          23CA
+HIGHER_VALUE        2364
+IMMEDIATE_DATA      1E1E
+IMMEDIATE_DATA_SYMBOL  23CE
+IMMEDIATE_OR_REGISTER_JUMP_TABLE  219E
+IMMEDIATE_ROTATION  21AA
+IMMEDIATE_ROTATION_HELPER  21FE
+INTRO_ENDING        2232
+INTRO_STARTING      2212
+INVALID             11B0
+INVALID_ENDING_ADDRESS  1108
+INVALID_INPUT       2250
+INVALID_STARTING_ADDRESS  10F0
+JSR_VALUE           22CA
+LEA_VALUE           22D0
+LEFT_DIRECTION      233C
+LEFT_DIRECTION_PRINT  2192
+LESS_OR_EQUAL_VALUE  2394
+LESS_THAN_VALUE     238C
+LONG_SUFFIX         23DA
+LOWER_OR_SAME_VALUE  2368
+LS_VALUE            232E
+MINUS_SIGN          23B2
+MINUS_VALUE         2384
+MOVEA_VALUE         2348
+MOVEQ_VALUE         2356
+MOVE_BYTE_SUFFIX    1FB4
+MOVE_LONG_SUFFIX    1FC4
+MOVE_OPCODE_HELPER  18A4
+MOVE_SECOND_OPCODE_HELPER  18D6
+MOVE_SIZE_PRINT_JUMP_TABLE  1F96
+MOVE_VALUE          2350
+MOVE_WORD_SUFFIX    1FD4
+MULS_AND_MULU_HELPER  1450
+MULS_VALUE          230C
+MULU_VALUE          2312
+NEG_VALUE           22D6
+NINE                2402
+NOP_VALUE           22B8
+NORMAL_SIZE_PRINT_JUMP_TABLE  1FE4
+NOT_EQUAL_VALUE     2370
+ONE                 23E2
+OPENING_BRACKET     23A6
+ORI_VALUE           22C4
+OR_VALUE            2344
+OVERFLOW_CLEAR_VALUE  2378
+OVERFLOW_SET_VALUE  237C
+PARSING_OP_CODE     103E
+PLACE_HOLDER_3      1E5C
+PLACE_HOLDER_4      1E64
+PLUS_SIGN           23AE
+PLUS_VALUE          2380
+PREPARE_START_AND_END_ADDRESS  117A
+PRESS_ENTER_TO_CONTINUE  11A4
+PRINT_ADDRESS_LOCATION  1952
+PRINT_ADDRESS_REGISTER  197E
+PRINT_CLOSE_BRACKET  19A2
+PRINT_COMMA         1972
+PRINT_DATA_MODE_DESTINATION  1938
+PRINT_DATA_MODE_SOURCE  191E
+PRINT_DATA_REGISTER  198A
+PRINT_EMPTY_SPACE   19D2
+PRINT_HEX_0         1ED6
+PRINT_HEX_1         1EE2
+PRINT_HEX_2         1EEE
+PRINT_HEX_3         1EFA
+PRINT_HEX_4         1F06
+PRINT_HEX_5         1F12
+PRINT_HEX_6         1F1E
+PRINT_HEX_7         1F2A
+PRINT_HEX_8         1F36
+PRINT_HEX_9         1F42
+PRINT_HEX_A         1F4E
+PRINT_HEX_B         1F5A
+PRINT_HEX_C         1F66
+PRINT_HEX_D         1F72
+PRINT_HEX_E         1F7E
+PRINT_HEX_F         1F8A
+PRINT_HEX_SYMBOL    19C6
+PRINT_IMMEDIATE_DATA_AND_HEX  1E6C
+PRINT_IMMEDIATE_DATA_SYMBOL  19DE
+PRINT_LONG_SYMBOL   1E56
+PRINT_MINUS_SIGN    19BA
+PRINT_NORMAL_BYTE_SUFFIX  1FFC
+PRINT_NORMAL_LONG_SUFFIX  201C
+PRINT_NORMAL_SUFFIX  12F4
+PRINT_NORMAL_WORD_SUFFIX  200C
+PRINT_NOT_NORMAL_SUFFIX  12E2
+PRINT_OPEN_BRACKET  1996
+PRINT_OUT_ADD       15C8
+PRINT_OUT_ADDA      1564
+PRINT_OUT_ADDQ      1378
+PRINT_OUT_ARITH_SHIFT_MEM  1772
+PRINT_OUT_ASD       17EE
+PRINT_OUT_ASD_OR_LSD  17D4
+PRINT_OUT_BCC       171A
+PRINT_OUT_BRA       16B6
+PRINT_OUT_BSR       16E8
+PRINT_OUT_CMP       14A6
+PRINT_OUT_CMPI      1286
+PRINT_OUT_DIVS      1402
+PRINT_OUT_JSR       125C
+PRINT_OUT_LEA       1330
+PRINT_OUT_LOGICAL_SHIFT_MEM  1764
+PRINT_OUT_LSD       17FC
+PRINT_OUT_MOVE      18CA
+PRINT_OUT_MOVEA     18BE
+PRINT_OUT_MOVEQ     14F2
+PRINT_OUT_MULS      1446
+PRINT_OUT_MULU      149E
+PRINT_OUT_NEG       11DE
+PRINT_OUT_NOP       121A
+PRINT_OUT_OR        15BE
+PRINT_OUT_ORI_TO_SR  1246
+PRINT_OUT_ROD       180A
+PRINT_OUT_ROTATE_MEM  17C8
+PRINT_OUT_RTS       1230
+PRINT_OUT_SUB       15D2
+PRINT_OUT_SUBA      155A
+PRINT_OUT_SUBQ      1382
+PRINT_PLUS_SIGN     19AE
+PRINT_REGISTER_NUMBER  1316
+PRINT_SHORT_SYMBOL  1E50
+PRINT_TO_SCREEN_ENTIRE_STRING  1916
+REGISTER_111_JUMP_TABLE  1E32
+REGISTER_MODE_000   1D6C
+REGISTER_MODE_001   1D76
+REGISTER_MODE_010   1D80
+REGISTER_MODE_011   1D8E
+REGISTER_MODE_100   1D98
+REGISTER_MODE_101   1DA2
+REGISTER_MODE_110   1DA8
+REGISTER_MODE_111   1DAE
+REGISTER_MODE_JUMP_TABLE  1D3C
+REGISTER_ROTATION   21D8
+RIGHT_DIRECTION     2340
+RIGHT_DIRECTION_PRINT  2186
+RIGHT_OR_LEFT_JUMP_TABLE  217A
+RO_VALUE            2332
+RTS_VALUE           22BE
+SEVEN               23FA
+SHORT_OR_LONG_PRINT  1DD4
+SIX                 23F6
+SOURCE_MODE         350
+SOURCE_VAR          400
+SPACE               23C2
+SPECIAL_SHIFT_INSTRUCTION  1D10
+SR_VALUE            239C
+START               1000
+STARTING_ADDRESS    100
+SUBA_AND_ADDA_HELPER  156E
+SUBA_VALUE          22EE
+SUBQ_HELPER_FUNCTION  13DC
+SUBQ_VALUE          22F4
+SUB_HELPER_FUNCTION  162C
+SUB_HELPER_REGISTER_TO_MEM  1688
+SUB_VALUE           22E8
+TEMP_CURRENT_2_NIBBLES  750
+TEMP_CURRENT_4_NIBBLES  200
+THIRD_TEMP_VAR      550
+THREE               23EA
+TWO                 23E6
+UNSUPPORTED_MOVE_SIZE  1FAE
+UNSUPPORTED_NORMAL_SUFFIX  202C
+USER_INPUT_ENTER    118C
+WORD_SUFFIX         23D6
+ZERO                23DE
