@@ -1,0 +1,83 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/23/2018 12:34:36 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Cumulative sum program
+00000000                             3  * Written by : Thuan Tran
+00000000                             4  * Date       : Feb 19th, 2018
+00000000                             5  * Description: This program takes in a decimal by the user and add 512 multiple times in which the times equal the user input
+00000000                             6  * P.S: Assumes valid input 
+00000000                             7  *-----------------------------------------------------------
+00001000                             8      ORG    $1000
+00001000                             9     
+00001000                            10  START:                  ; first instruction of program
+00001000                            11  
+00001000                            12  * Put program code here
+00001000                            13      
+00001000  43F9 00001052             14          LEA     MESSAGE,A1        * Display the message for user
+00001006  103C 000E                 15          MOVE.B  #14,D0
+0000100A  4E4F                      16          TRAP    #15
+0000100C  103C 0004                 17          MOVE.B  #4,D0              * Get the input from user
+00001010  4E4F                      18          TRAP    #15 
+00001012  2A3C 00000200             19          MOVE.L  #512, D5
+00001018                            20      
+00001018                            21  LOOP    
+00001018  B284                      22          CMP.L     D4,D1           * Check if we reach the limit of the counter
+0000101A  6700 0026                 23          BEQ       FINISH     
+0000101E  2602                      24          MOVE.L      D2,D3           * Save the value in case the carry bit is set
+00001020  D485                      25          ADD.L    D5,D2         * Add 512 to the result we already have
+00001022  6500 0006                 26          BCS.L       CARRY_SET          * Check if carry bit is set
+00001026  5244                      27          ADDQ      #1,D4           * Increment the number of time we have looped
+00001028                            28        
+00001028                            29                
+00001028  60EE                      30          BRA       LOOP
+0000102A                            31          
+0000102A                            32  
+0000102A                            33  CARRY_SET
+0000102A  43F9 00001093             34          LEA     CARRY_MESSAGE,A1   * Display message letting user know that the carry bit was set
+00001030  103C 000E                 35          MOVE.B  #14,D0       
+00001034  4E4F                      36          TRAP    #15
+00001036  2203                      37          MOVE.L  D3,D1              * Print out the value before the carry bit is set
+00001038  700F                      38          MOVEQ   #15,D0
+0000103A  740A                      39          MOVEQ   #10,D2
+0000103C  4E4F                      40          TRAP    #15
+0000103E  FFFF FFFF                 41          SIMHALT
+00001042                            42          
+00001042                            43  
+00001042                            44  
+00001042                            45  FINISH
+00001042  2202                      46          MOVE.L  D2,D1               * Load the data that make the carry bit is set 
+00001044  700F                      47          MOVEQ  #15,D0              * Specify that task that will be used to printout the data 
+00001046  740A                      48          MOVEQ  #10,D2               * We want to see the number in base 10
+00001048  4E4F                      49          TRAP    #15
+0000104A                            50                                      * If the carry flag is set, it will print out 0 instead 
+0000104A  FFFF FFFF                 51          SIMHALT
+0000104E                            52              
+0000104E  FFFF FFFF                 53      SIMHALT             ; halt simulator
+00001052                            54  
+00001052                            55  * Put variables and constants here
+00001052                            56  
+00001052= 57 45 4C 43 4F 4D ...     57  MESSAGE         DC.B    'WELCOME TO THE PROGRAM. PLEASE INPUT A POSITIVE DECIMAL NUMBER',CR,LF,0
+00001093= 54 48 45 20 52 45 ...     58  CARRY_MESSAGE   DC.B    'THE RESULT HAS A CARRY BIT.HERE IS THE VALUE BEFORE THE CARRY BIT WAS SET',CR,LF,0
+000010DF                            59  
+000010DF                            60  
+000010DF  =0000000D                 61  CR              EQU     $0D
+000010DF  =0000000A                 62  LF              EQU     $0A
+000010DF                            63      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CARRY_MESSAGE       1093
+CARRY_SET           102A
+CR                  D
+FINISH              1042
+LF                  A
+LOOP                1018
+MESSAGE             1052
+START               1000

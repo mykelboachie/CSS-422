@@ -1,0 +1,78 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/23/2018 2:30:05 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Most significant bit
+00000000                             3  * Written by : Thuan Tran
+00000000                             4  * Date       : Feb 23rd, 2018
+00000000                             5  * Description: Given a hex number, print out its most significant bit 
+00000000                             6  *-----------------------------------------------------------
+00000000  =FE631200                  7  DATA     EQU        $FE631200  * An input to the program. Range from $00000000 to $FFFFFFFF
+00000000                             8  
+00001000                             9      ORG    $1000
+00001000                            10  
+00001000                            11  START:                  ; first instruction of program
+00001000                            12  
+00001000                            13  * Put program code here
+00001000  21FC FE631200 4232        14      MOVE.L      #DATA, $00004232
+00001008  43F8 4232                 15      LEA         $0004232,A1
+0000100C                            16      
+0000100C                            17  LOOP   
+0000100C  0C41 0004                 18      CMPI        #4,D1   * Check to see if we have go through all the bytes (4 bytes - 32 bits)
+00001010                            19      
+00001010  6700 002A                 20      BEQ         NO_SIGNIFICANT
+00001014  6000 0002                 21      BRA         LOOP2
+00001018                            22    
+00001018                            23  LOOP2
+00001018  1431 1800                 24      MOVE.B     (A1,D1.L),D2  * Go through each byte, starting from the left
+0000101C                            25     
+0000101C  5241                      26       ADDI       #1,D1      * The increment counter 
+0000101E  B47C 0000                 27      CMP         #0,D2            * Check to see the bytes on the left is 0
+00001022  67E8                      28      BEQ         LOOP      * If it is the most significant bit will be more to the right
+00001024                            29       
+00001024  1602                      30      MOVE.B      D2,D3      * Save the old data in D2, and let D3 do all te work
+00001026  E84B                      31      LSR         #4,D3    * Shift 4 bits or a nibble to the right
+00001028  B63C 0000                 32      CMP.B       #0,D3     * Check if the new result is 0. because here, D3 can be 0E, which is 0000 0011. The most significant bit should be 3 in this case
+0000102C  6700 0008                 33      BEQ      FINISH      *
+00001030  1203                      34      MOVE.B       D3,D1     * Get the new data, the most significant bit 
+00001032  6000 0010                 35      BRA       PRINT_OUT 
+00001036                            36     
+00001036                            37      
+00001036                            38      
+00001036                            39  FINISH
+00001036  1202                      40      MOVE.B      D2,D1       * in this case ,we move the old data to print out
+00001038  6000 000A                 41      BRA PRINT_OUT
+0000103C                            42    
+0000103C                            43  NO_SIGNIFICANT
+0000103C  1238 0000                 44      MOVE.B      0,D1            * Print out 0 as there is no significant 
+00001040  6000 0002                 45      BRA PRINT_OUT  
+00001044                            46  PRINT_OUT
+00001044  700F                      47      MOVEQ   #15,D0         * Print out in decimal form
+00001046  740A                      48      MOVEQ   #10,D2
+00001048  4E4F                      49      TRAP     #15
+0000104A  FFFF FFFF                 50      SIMHALT
+0000104E                            51    
+0000104E                            52  
+0000104E  FFFF FFFF                 53      SIMHALT             ; halt simulator
+00001052                            54  
+00001052                            55  * Put variables and constants here
+00001052                            56     
+00001052                            57      
+00001052                            58      
+00001052                            59      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+DATA                FE631200
+FINISH              1036
+LOOP                100C
+LOOP2               1018
+NO_SIGNIFICANT      103C
+PRINT_OUT           1044
+START               1000

@@ -1,0 +1,68 @@
+00000400 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/22/2018 10:02:04 PM
+
+00000000                             1  **********************************************************
+00000000                             2  *
+00000000                             3  * This program uses the example from the questions above and only make a minor modification
+00000000                             4  * Instead of providing user input of what patterns we want to find, I manually input the data instead and checked if the answer is correct or not
+00000000                             5  * For the previous problem, the pattern at $AA50 point to is FFFF, in which case, it will match the first starting address. Because from $00007000 to $00008000, all the data is F
+00000000                             6  * So for this problem, I manually inserted a pattern to look for. And also set the pattern to look for within the address range
+00000000                             7  *
+00000000                             8  ************************************************************
+00000000                             9  * Equates section
+00000000                            10   
+00000000                            11              OPT         CRE
+00000000  =00007000                 12  test_st     EQU         $00007000     * Start of block to fill
+00000000  =00008000                 13  test_end    EQU         $00008000     * Last address to fill
+00000000  =0000AA50                 14  pattern     EQU         $AA50         * Pattern to find
+00000000  =000A0000                 15  stack       EQU         $000A0000     * Locate the stack if necessary
+00000000  =00000400                 16  start       EQU         $400          * Program begins here
+00000000  =00002700                 17  exit        EQU         $2700         * Simulator stop code
+00000000  =00000001                 18  byte        EQU         1             * Advance by one byte
+00000000                            19   
+00000000                            20  * code section
+00000400                            21              ORG         start
+00000400                            22  START
+00000400  13FC 0009 0000AA50        23              MOVE.B      #%1001, pattern     * Load the actual data pattern to the address. In this case, we want to look for any where that contains 09
+00000408  11FC 0009 7080            24              MOVE.B      #%1001, $00007080   * Let's say that at address 00007080 we have a 9. The actual data of the adress stored at (A2) at the end is expected to be 00007080
+0000040E                            25                                              
+0000040E  41F8 7000                 26              LEA         test_st,A0    * Load starting address
+00000412  43F9 00008000             27              LEA         test_end,A1   * Load ending address
+00000418  45F9 00000442             28              LEA         addr_match,A2 * Address of match saved here
+0000041E  1039 0000AA50             29              MOVE.B      pattern,D0   * Store pattern in D0
+00000424                            30                
+00000424  B010                      31  loop        CMP.B       (A0),D0       * Test pattern
+00000426  6700 000C                 32              BEQ         match         * They're the same, save it and exit
+0000042A  5288                      33              ADDQ.L      #byte,A0      * Increment pointer
+0000042C  B1C9                      34              CMPA.L      A1,A0         * Are we done yet?
+0000042E  6E00 000A                 35              BGT         no_match      * Past range? Exit
+00000432  60F0                      36              BRA          loop   * Go back and try again
+00000434  2488                      37  match       MOVE.L        A0,(A2)         * Save contents of A0 and exit
+00000436  4E72 2700                 38              STOP        #exit              * Also added this line to exit because in the previous sample code, it will keep going
+0000043A  24B8 FFFF                 39  no_match    MOVE.L      $FFFFFFFF,(A2)    * Added this as requested from the question
+0000043E  4E72 2700                 40              STOP          #exit           * Break out of the simulator
+00000442                            41   
+00000442                            42  * data section
+00000442                            43   
+00000442= 00000000                  44  addr_match    DC.L         $00000000       * Initialize to no-match value
+00000446                            45              END          START
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ADDR_MATCH          442
+BYTE                1
+EXIT                2700
+LOOP                424
+MATCH               434
+NO_MATCH            43A
+PATTERN             AA50
+STACK               A0000
+START               400
+TEST_END            8000
+TEST_ST             7000

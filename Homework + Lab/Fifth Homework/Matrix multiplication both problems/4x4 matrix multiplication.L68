@@ -1,0 +1,133 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/22/2018 11:16:24 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :       Matrix multiplication
+00000000                             3  * Written by :       Thuan Tran
+00000000                             4  * Date       :       Feb 21st,18
+00000000                             5  * Description:          
+00000000                             6  *-----------------------------------------------------------
+00000000  =00004100                  7  MATRIX_A                 EQU     $4100  * m x n
+00000000  =00004200                  8  MATRIX_B                 EQU     $4200  * n x p
+00000000  =00004300                  9  MATRIX_C                 EQU     $4300    * m x p
+00000000  =00000004                 10  NUMBER_OF_ROWS           EQU     4   * For the above A matrix, which is m
+00000000  =00000004                 11  NUMBER_OF_COLUMNS_ROWS   EQU     4   * For the above A and B matrix, which is n
+00000000  =00000004                 12  NUMBER_OF_COLUMNS        EQU     4   * For the above B matrix, which is p
+00000000                            13  
+00000000  =00004400                 14  FIRST_VAR               EQU      $4400            *Defined these variables because address register is such a pain to use
+00000000  =00004500                 15  SECOND_VAR              EQU      $4500
+00000000  =00004600                 16  THIRD_VAR               EQU      $4600
+00000000                            17  
+00000000                            18  
+00000000                            19  
+00001000                            20                  ORG    $1000
+00001000                            21  START:                  ; first instruction of program
+00001000                            22  
+00001000                            23  * Put program code here
+00001000  41F8 4100                 24                  LEA     MATRIX_A,A0     * Starting address of matrix A
+00001004  43F8 4200                 25                  LEA     MATRIX_B,A1     * Starting address of matrix B
+00001008  45F8 4300                 26                  LEA     MATRIX_C,A2     * Starting address of matrix C, which is the result
+0000100C                            27          
+0000100C  31FC 0004 4400            28                  MOVE.W  #NUMBER_OF_ROWS,FIRST_VAR * Stored the rows of first matrix 
+00001012  31FC 0004 4500            29                  MOVE.W  #NUMBER_OF_COLUMNS_ROWS,SECOND_VAR * Stored the column of first matrix and row of second matrix
+00001018  31FC 0004 4600            30                  MOVE.W  #NUMBER_OF_COLUMNS,THIRD_VAR * Store the column of second matrix 
+0000101E  4242                      31                  CLR.W   D2 * Used to store the sum of the matrix multiplication
+00001020  7AFF                      32                  MOVEQ   #-1,D5 * counter for outer loop
+00001022                            33                  
+00001022                            34                  
+00001022                            35  THIRD_OUTER_LOOP      * i=0 to m 
+00001022  7CFF                      36                  MOVEQ   #-1,D6  * Reset the second inner loop
+00001024  5245                      37                  ADDI    #1,D5   * Increment the counter
+00001026  BA78 4400                 38                  CMP     FIRST_VAR,D5  * Check if we have looped through the row of first matrix or not
+0000102A  6700 0066                 39                  BEQ     FINISH   * When we reach this stage, means the outer loop is done looping
+0000102E  6000 0002                 40                  BRA     SECOND_INNER_LOOP * Continue to second inner loop 
+00001032                            41                                                       
+00001032                            42  SECOND_INNER_LOOP     *j = 0 to p
+00001032  7EFF                      43                  MOVEQ   #-1,D7  *Reset the first inner loop
+00001034  5246                      44                  ADDI    #1,D6   * Counter for second inner loop
+00001036  BC78 4600                 45                  CMP     THIRD_VAR,D6    * Check if we have looped through the column of the second matrix
+0000103A  67E6                      46                  BEQ     THIRD_OUTER_LOOP    * When we have exceeded the limit, return to outer loop
+0000103C  303C 0000                 47                  MOVE    #0,D0               * Prepare the sum for value A[i][j] starting at 0
+00001040  6000 0002                 48                  BRA     FIRST_INNER_LOOP    * Go the inner loop of column of second matrix
+00001044                            49                
+00001044                            50  
+00001044                            51                      * Sum += A[i][k] * B[k][j]   (m x n  n x p)
+00001044                            52  FIRST_INNER_LOOP      *k = 0 to n 
+00001044  5247                      53                  ADDI    #1,D7  * Increment the counter 
+00001046  BE78 4500                 54                  CMP     SECOND_VAR,D7  * Check if we have loop through the column of first matrix (row of second matrix)
+0000104A  6700 0030                 55                  BEQ     MOVE_DATA_TO_RESULT_MATRIX
+0000104E  3405                      56                  MOVE    D5,D2                   * Move i to D2
+00001050  C4F8 4500                 57                  MULU    SECOND_VAR,D2           * Perform the following calculation (k + (i * n)) * K. This is i*n where n is the column
+00001054  D447                      58                  ADD     D7,D2               * This is k + above 
+00001056  C4FC 0002                 59                  MULU    #2,D2                  * Since we are handling with word, so need to multiply by 2
+0000105A  3630 2000                 60                  MOVE.W  (A0,D2.W),D3            * The location of A[i][k] and we move it to D3
+0000105E  3207                      61                  MOVE    D7,D1                           * Move k to D1
+00001060                            62                                                            * Perform the following calculation (j + (k*n))*K                                           
+00001060  C2F8 4600                 63                  MULU    THIRD_VAR,D1                       * This is k*n
+00001064  D246                      64                  ADD     D6,D1                            * j + above 
+00001066  C2FC 0002                 65                  MULU    #2,D1
+0000106A  3831 1000                 66                  MOVE.W  (A1,D1.W),D4                  * Move B[k][j] to D4
+0000106E  C8C3                      67                  MULU    D3,D4   * Calculate the product between A[i][k] and B[k][j]
+00001070  D044                      68                  ADD     D4,D0    * Add sum to the product above
+00001072  4241                      69                  CLR.W   D1           * Clear all data register we used before for next calculation
+00001074  4242                      70                  CLR.W   D2
+00001076  4243                      71                  CLR.W   D3
+00001078  4244                      72                  CLR.W   D4
+0000107A  60C8                      73                  BRA     FIRST_INNER_LOOP
+0000107C                            74                                                 
+0000107C                            75  MOVE_DATA_TO_RESULT_MATRIX
+0000107C  3238 4600                 76                  MOVE    THIRD_VAR,D1      * Move j to D1
+00001080  C2C5                      77                  MULU    D5,D1             * Calculate displacement of C[i][j]. Which is equal (j+(i*n) )* K where n is the column second matrix
+00001082  D246                      78                  ADD     D6,D1                       
+00001084  C2FC 0002                 79                  MULU    #2,D1               * This is the location C[i][j] where we will put the data
+00001088  3580 1000                 80                  MOVE.W    D0,(A2,D1.W)        * Move the result sum into C[i][j]
+0000108C  4241                      81                  CLR.W   D1    * Reset the variable A3
+0000108E  4240                      82                  CLR.W   D0     * Reset the sum
+00001090  60A0                      83                  BRA SECOND_INNER_LOOP        
+00001092                            84                  
+00001092                            85                  
+00001092                            86                  
+00001092                            87  FINISH
+00001092  FFFF FFFF                 88                  SIMHALT
+00001096                            89  
+00001096                            90  * Put variables and constants here
+00004100                            91      ORG     MATRIX_A
+00004100= 0001 0002 0003 0004       92      DC.W    1,2,3,4
+00004108= 0001 0002 0003 0004       93      DC.W    1,2,3,4         * Matrix A with 4x4
+00004110= 0001 0002 0003 0004       94      DC.W    1,2,3,4
+00004118= 0001 0002 0003 0004       95      DC.W    1,2,3,4
+00004120                            96      
+00004200                            97      ORG     MATRIX_B
+00004200= 0002 0003 0004 0005       98      DC.W    2,3,4,5            * Matrix B with 4x4
+00004208= 0002 0003 0004 0005       99      DC.W    2,3,4,5
+00004210= 0002 0003 0004 0005      100      DC.W    2,3,4,5
+00004218= 0002 0003 0004 0005      101      DC.W    2,3,4,5
+00004220                           102        
+00004300                           103      ORG     MATRIX_C         * Result matrix 
+00004300                           104      DS.W    1    
+00004302                           105          
+00004302                           106      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+FINISH              1092
+FIRST_INNER_LOOP    1044
+FIRST_VAR           4400
+MATRIX_A            4100
+MATRIX_B            4200
+MATRIX_C            4300
+MOVE_DATA_TO_RESULT_MATRIX  107C
+NUMBER_OF_COLUMNS   4
+NUMBER_OF_COLUMNS_ROWS  4
+NUMBER_OF_ROWS      4
+SECOND_INNER_LOOP   1032
+SECOND_VAR          4500
+START               1000
+THIRD_OUTER_LOOP    1022
+THIRD_VAR           4600

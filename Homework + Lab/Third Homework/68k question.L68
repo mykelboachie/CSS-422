@@ -1,0 +1,52 @@
+00000400 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 2/14/2018 11:54:40 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :
+00000000                             3  * Written by :
+00000000                             4  * Date       :
+00000000                             5  * Description:
+00000000                             6  *-----------------------------------------------------------
+00000000  =00004000                  7  addr1     EQU     $4000        
+00000000  =00004001                  8  addr2     EQU     $4001 
+00000000  =0000A7FF                  9  data2     EQU     $A7FF 
+00000000  =00005555                 10  data3     EQU     $5555 
+00000000  =00000000                 11  data4     EQU     $0000 
+00000000  =00001246                 12  data5     EQU     4678 
+00000000  =0000004F                 13  data6     EQU     %01001111 
+00000000  =00000017                 14  data7     EQU     %00010111 
+00000400                            15           ORG       $400 *                                                                                                                
+00000400                            16  
+00000400  303C A7FF                 17  start    MOVE.W    #data2,D0     * Load D0 
+00000404  123C 004F                 18           MOVE.B    #data6,D1     * Load D1 
+00000408  143C 0017                 19           MOVE.B    #data7,D2     * load D2 
+0000040C  363C 5555                 20           MOVE.W    #data3,D3     * load D3 
+00000410  307C 4000                 21           MOVEA.W   #addr1,A0     * load address register 
+00000414  10C1                      22           MOVE.B    D1,(A0)+      * transfer byte to memory 
+00000416  10C2                      23           MOVE.B    D2,(A0)+      * transfer second byte
+00000418  327C 4000                 24           MOVEA.W   #addr1,A1     * load address 
+0000041C  C751                      25           AND.W     D3,(A1)       * Logical AND
+0000041E                            26   
+0000041E                            27  *Stop here. The next instruction shows how a label is used
+0000041E                            28   
+0000041E  4EF8 0400                 29          JMP        start         * This instruction keeps the program
+00000422                            30                                          * looping forever
+00000422                            31          END   $400             * This pseudo op-code tells the assembler 
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ADDR1               4000
+ADDR2               4001
+DATA2               A7FF
+DATA3               5555
+DATA4               0
+DATA5               1246
+DATA6               4F
+DATA7               17
+START               400
